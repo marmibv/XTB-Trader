@@ -6,3 +6,11 @@
 html {
     background-color: #1e1e1e;
 }
+
+#countdown {
+    position: absolute;
+    top: 5%;
+    left: 5%;
+    font-size: 5rem;
+    color: white;
+}
