@@ -1,4 +1,5 @@
 import dash
+import logging
 from dash import dcc
 from dash import html
 from utility import utility
@@ -7,6 +8,7 @@ from XTBClient.api import MODES
 
 app = dash.Dash(__name__)
 
+logging.getLogger("XTBApi.api").setLevel(logging.WARNING)
 
 app.layout = html.Div(
     [
@@ -31,7 +33,6 @@ app.layout = html.Div(
 def update_candlestick_chart(n):
     df = utility.collect_yf("EURUSD", "1d", "1m")
     utility.analyze(df, [5, 6])
-    print("Refreshing...")
     # df = get_df("EURUSD")
     # df = df[-10:]
 
@@ -45,6 +46,18 @@ def update_candlestick_chart(n):
             sl=20,
         )
 
+    status = utility.open_transaction(
+        MODES.BUY if action_marker > 0 else MODES.SELL,
+        "EURUSD",
+        volume=0.2,
+        tp=10,
+        sl=20,
+    )
+    print(
+        "TRANSACTION\t{}\t{}".format(
+            status["requestStatus"].name, status["message"]
+        )
+    )
     fig = utility.CandleStick(df)
     fig["layout"]["uirevision"] = "some-constant"
 

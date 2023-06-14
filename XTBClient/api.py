@@ -42,6 +42,15 @@ class PERIOD(enum.Enum):
     ONE_MONTH = 43200
 
 
+class TRANSACTION_STATUS(enum.Enum):
+    ERROR = 0
+    PENDING = 1
+    REQUOTED = 2
+    ACCEPTED = 3
+    REJECTED = 4
+    PRICED = 5
+
+
 def _get_data(command, **parameters):
     data = {
         "command": command,
@@ -208,21 +217,34 @@ class XTBClient:
     def open_transaction(self, mode, symbol, volume, sl=0, tp=0, message=""):
         symbol_info = self.get_symbol(symbol)
         price = symbol_info["ask" if mode.value == 0 else "bid"]
-        return self.send_command(
-            "tradeTransaction",
-            tradeTransInfo={
-                "cmd": mode.value,
-                "comment": message,
-                "ie_deviation": 0,
-                "order": 0,
-                "price": price,
-                "sl": price - sl*0.0001,
-                "symbol": symbol,
-                "tp": price + tp*0.0001,
-                "type": 0,
-                "volume": volume,
-            },
-        )
+        try:
+            order = self.send_command(
+                "tradeTransaction",
+                tradeTransInfo={
+                    "cmd": mode.value,
+                    "comment": message,
+                    "ie_deviation": 0,
+                    "order": 0,
+                    "price": price,
+                    "sl": price - sl * 0.0001,
+                    "symbol": symbol,
+                    "tp": price + tp * 0.0001,
+                    "type": 0,
+                    "volume": volume,
+                },
+            )
+
+            status = self.transaction_status(order.get("order"))
+
+            status["requestStatus"] = TRANSACTION_STATUS(
+                status["requestStatus"]
+            )
+        except Exception as e:
+            status = dict(
+                request_status=TRANSACTION_STATUS(0), message=str(e)
+            )
+
+        return status
 
     def transaction_status(self, order_id):
         return self.send_command("tradeTransactionStatus", order=int(order_id))

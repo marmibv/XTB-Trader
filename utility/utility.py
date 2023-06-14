@@ -1,10 +1,11 @@
 import plotly.graph_objects as go
 import pandas as pd
+import sys
 import os
 import random
 import yfinance as yf
 import datetime
-from XTBClient.api import XTBClient, MODES
+from XTBClient.api import XTBClient, MODES, TRANSACTION_STATUS
 
 
 class CandleStick(go.Figure):
@@ -83,12 +84,17 @@ def collect_yf(symbol, period, interval):
         # df.reset_index(inplace=True)
         # if "Datetime" not in df.columns:
         # df['Datetime'] = df.index
+    sys.stdout = open('output.txt', 'w')
 
     df = yf.download("EURUSD=x", period=period, interval=interval)
+
+    sys.stdout.close()
+    sys.stdout = sys.__stdout__
+
     adjust_df(df)
 
-    if not os.path.exists('csvs'):
-        os.makedirs('csvs')
+    if not os.path.exists("csvs"):
+        os.makedirs("csvs")
     df[[col for col in df.columns if col not in "index"]].to_csv(
         os.path.join("csvs", symbol + "_data.csv"), index=False
     )
@@ -133,8 +139,8 @@ def analyze(df, means):
 
 def open_transaction(mode: MODES, symbol: str, tp=0, sl=0, volume=0.01):
     client = XTBClient()
-    client.login(
-        os.environ.get("XTB_login"), os.environ.get("XTB_pass")
-    )
-    client.open_transaction(mode, symbol, volume, tp=tp, sl=sl)
+    client.login(os.environ.get("XTB_login"), os.environ.get("XTB_pass"))
+    retval = client.open_transaction(mode, symbol, volume, tp=tp, sl=sl)
     client.logout()
+
+    return retval
