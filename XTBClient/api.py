@@ -1,10 +1,6 @@
-from XTBApi.api import Client
-import mplfinance as mpf
 import pandas as pd
 import logging
-import plotly.graph_objects as go
-from datetime import datetime, timedelta
-import os
+from datetime import datetime
 import enum
 import time
 import json

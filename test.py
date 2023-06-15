@@ -4,7 +4,7 @@ import os
 
 client = XTBClient()
 # client.login(os.environ.get("XTB_login"), os.environ.get("XTB_pass"))
-client.login(14850296, os.environ.get("XTB_pass"))
+# client.login(14850296, os.environ.get("XTB_pass"))
 
 retval = client.get_trades()
 
