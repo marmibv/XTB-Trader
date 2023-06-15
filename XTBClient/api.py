@@ -76,7 +76,6 @@ class TRANSACTION:
         self.price = close_price
         self.sl = sl
         self.tp = tp
-        pass
 
 
 def _get_data(command, **parameters):
@@ -97,6 +96,7 @@ class XTBClient:
         self.status = STATUS.NOT_LOGGED
         self.ws = None
         self.LOGGER = logging.getLogger("XTBApi.api.BaseClient")
+        self.trades = {}
 
     def login(self, user_id, password, mode="demo"):
         """login command"""
@@ -242,47 +242,95 @@ class XTBClient:
         self.LOGGER.info(f"CMD: get symbol {symbol}...")
         return self.send_command("getSymbol", symbol=symbol)
 
-    def transaction(
-        self,
-        mode,
-        symbol,
-        trans_type,
-        volume,
-        sl=0,
-        tp=0,
-        order=0,
-        price=0,
-        message="",
-    ):
-        symbol_info = self.get_symbol(symbol)
-        if price == 0:
-            price = symbol_info["ask" if mode.value == 0 else "bid"]
+    def transaction(self, mode, symbol, trans_type, volume, **kwargs):
         try:
-            order = self.send_command(
-                "tradeTransaction",
-                tradeTransInfo={
-                    "cmd": mode.value,
-                    "comment": message,
-                    "ie_deviation": 0,
-                    "order": order,
-                    "price": price,
-                    "sl": price - sl * 0.0001,
-                    "symbol": symbol,
-                    "tp": price + tp * 0.0001,
-                    "type": trans_type.value,
-                    "volume": volume,
-                },
-            )
+            symbol_info = self.get_symbol(symbol)
+            price = symbol_info["ask" if mode.value == 0 else "bid"]
+
+            kwargs["price"] = price
+
+            if "sl" in kwargs:
+                kwargs["sl"] = kwargs["price"] - kwargs["sl"] * 0.0001 * (
+                    -1 * mode.value
+                )
+
+            if "tp" in kwargs:
+                kwargs["tp"] = kwargs["price"] + kwargs["tp"] * 0.0001 * (
+                    -1 * mode.value
+                )
+            # check kwargs
+            accepted_values = [
+                "order",
+                "price",
+                "expiration",
+                "customComment",
+                "offset",
+                "sl",
+                "tp",
+            ]
+            assert all([val in accepted_values for val in kwargs.keys()])
+            info = {
+                "cmd": mode.value,
+                "symbol": symbol,
+                "type": trans_type.value,
+                "volume": volume,
+            }
+            info.update(kwargs)  # update with kwargs parameters
+
+            order = self.send_command("tradeTransaction", tradeTransInfo=info)
 
             status = self.transaction_status(order.get("order"))
 
             status["requestStatus"] = TRANSACTION_STATUS(
                 status["requestStatus"]
             )
+
         except Exception as e:
             status = dict(request_status=TRANSACTION_STATUS(0), message=str(e))
 
         return status
+
+        # symbol_info = self.get_symbol(symbol)
+        # if price == 0:
+        #     price = symbol_info["ask" if mode.value == 0 else "bid"]
+        # try:
+        #     order = self.send_command(
+        #         "tradeTransaction",
+        #         tradeTransInfo={
+        #             "cmd": mode.value,
+        #             "comment": message,
+        #             "ie_deviation": 0,
+        #             "order": order,
+        #             "price": price,
+        #             "sl": price - sl * 0.0001,
+        #             "symbol": symbol,
+        #             "tp": price + tp * 0.0001,
+        #             "type": trans_type.value,
+        #             "volume": volume,
+        #         },
+        #     )
+
+        #     status = self.transaction_status(order.get("order"))
+
+        #     status["requestStatus"] = TRANSACTION_STATUS(
+        #         status["requestStatus"]
+        #     )
+        # except Exception as e:
+        #     status = dict(request_status=TRANSACTION_STATUS(0), message=str(e))
+
+        # return status
+
+    def close_transaction(self, trade: TRANSACTION):
+
+        response = self.transaction(
+            MODES.BUY,
+            trade.symbol,
+            TRANSACTION_TYPE.CLOSE,
+            trade.volume,
+            order=trade.order,
+            price=trade.price,
+        )
+        return response
 
     def transaction_status(self, order_id):
         return self.send_command("tradeTransactionStatus", order=int(order_id))
@@ -292,6 +340,10 @@ class XTBClient:
             TRANSACTION(**t)
             for t in self.send_command("getTrades", openedOnly=True)
         ]
+        return self.send_command("getTrades", openedOnly=True)
+
+    def update_trades(self):
+        self.trades = {str(t.order): t for t in self.get_trades()}
 
     def get_ticks(self, symbols):
         return self.send_command(
