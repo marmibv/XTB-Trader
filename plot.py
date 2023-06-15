@@ -1,11 +1,12 @@
 import dash
 import logging
+import os
 from datetime import datetime, timedelta
 from dash import dcc
 from dash import html
 from utility import utility
 from dash.dependencies import Output, Input
-from XTBClient.api import MODES
+from XTBClient.api import XTBClient, MODES
 
 app = dash.Dash(__name__)
 
@@ -32,6 +33,14 @@ app.layout = html.Div(
 )
 
 
+def report(status):
+    print(
+        "TRANSACTION\t{}\t{}".format(
+            status["request_status"].name, status["message"]
+        )
+    )
+
+
 @app.callback(
     Output("candlestick-chart", "figure"),
     [Input("interval-component", "n_intervals")],
@@ -40,25 +49,28 @@ def update_candlestick_chart(n):
     global target_time
 
     df = utility.collect_yf("EURUSD", "2h", "1m")
-    utility.analyze(df, [5, 10])
+    utility.analyze(df, means=[10, 15])
     # df = get_df("EURUSD")
     # df = df[-10:]
 
     target_time = datetime.now() + timedelta(minutes=1)
     action_marker = df.iloc[-1].is_trade
     if action_marker != 0:
-        status = utility.open_transaction(
+        client = XTBClient()
+        client.login(14850296, os.environ.get("XTB_pass"))
+
+        status = client.close_all()
+        report(status)
+
+        status = client.open_transaction(
             MODES.BUY if action_marker > 0 else MODES.SELL,
             "EURUSD",
             volume=0.2,
             tp=10,
             sl=20,
         )
-        print(
-            "TRANSACTION\t{}\t{}".format(
-                status["requestStatus"].name, status["message"]
-            )
-        )
+        report(status)
+
     fig = utility.CandleStick(df)
     fig["layout"]["uirevision"] = "some-constant"
 

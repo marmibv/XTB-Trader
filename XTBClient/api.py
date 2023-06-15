@@ -1,10 +1,6 @@
-from XTBApi.api import Client
-import mplfinance as mpf
 import pandas as pd
 import logging
-import plotly.graph_objects as go
-from datetime import datetime, timedelta
-import os
+from datetime import datetime
 import enum
 import time
 import json
@@ -42,6 +38,11 @@ class PERIOD(enum.Enum):
     ONE_MONTH = 43200
 
 
+class TRANSACTION_TYPE(enum.Enum):
+    OPEN = 0
+    CLOSE = 2
+
+
 class TRANSACTION_STATUS(enum.Enum):
     ERROR = 0
     PENDING = 1
@@ -49,6 +50,28 @@ class TRANSACTION_STATUS(enum.Enum):
     ACCEPTED = 3
     REJECTED = 4
     PRICED = 5
+
+
+class TRANSACTION:
+    def __init__(
+        self,
+        order,
+        symbol,
+        close_price,
+        profit,
+        volume,
+        sl,
+        tp,
+        *args,
+        **kwargs,
+    ):
+        self.order = order
+        self.symbol = symbol
+        self.profit = profit
+        self.volume = volume
+        self.price = close_price
+        self.sl = sl
+        self.tp = tp
 
 
 def _get_data(command, **parameters):
@@ -69,8 +92,9 @@ class XTBClient:
         self.status = STATUS.NOT_LOGGED
         self.ws = None
         self.LOGGER = logging.getLogger("XTBApi.api.BaseClient")
+        self.trades = {}
 
-    def login(self, user_id, password, mode="demo"):
+    def login(self, user_id: int, password: str, mode="demo"):
         """login command"""
         self.ws = create_connection(f"wss://ws.xtb.com/{mode}")
         response = self._send_command(
@@ -128,26 +152,67 @@ class XTBClient:
         """with check login"""
         return self._login_decorator(self._send_command, command, **kwargs)
 
-    def get_trading_hours(self, trade_position_list):
-        """getTradingHours command"""
-        self.LOGGER.info(
-            f"CMD: get trading hours of len " f"{len(trade_position_list)}..."
-        )
-        response = self.send_command(
-            "getTradingHours", symbols=trade_position_list
-        )
+    def _transaction(
+        self,
+        mode: MODES,
+        symbol: str,
+        trans_type: TRANSACTION_TYPE,
+        volume: float,
+        **kwargs,
+    ):
+        """Creates a new transaction"""
+        try:
+            symbol_info = self.get_symbol(symbol)
+            price = symbol_info["ask" if mode.value == 0 else "bid"]
 
-        for symbol in response:
-            for day in symbol["trading"]:
-                day["fromT"] = int(day["fromT"] / 1000)
-                day["toT"] = int(day["toT"] / 1000)
-            for day in symbol["quotes"]:
-                day["fromT"] = int(day["fromT"] / 1000)
-                day["toT"] = int(day["toT"] / 1000)
-        return response
+            kwargs["price"] = price
+
+            if "sl" in kwargs:
+                kwargs["sl"] = kwargs["price"] - kwargs["sl"] * 0.0001 * (
+                    -1 * mode.value
+                )
+
+            if "tp" in kwargs:
+                kwargs["tp"] = kwargs["price"] + kwargs["tp"] * 0.0001 * (
+                    -1 * mode.value
+                )
+            # check kwargs
+            accepted_values = [
+                "order",
+                "price",
+                "expiration",
+                "customComment",
+                "offset",
+                "sl",
+                "tp",
+            ]
+            assert all([val in accepted_values for val in kwargs.keys()])
+            info = {
+                "cmd": mode.value,
+                "symbol": symbol,
+                "type": trans_type.value,
+                "volume": volume,
+            }
+            info.update(kwargs)  # update with kwargs parameters
+
+            order = self.send_command("tradeTransaction", tradeTransInfo=info)
+
+            status = self.transaction_status(order.get("order"))
+
+            status["request_status"] = TRANSACTION_STATUS(
+                status["requestStatus"]
+            )
+
+            del status["requestStatus"]
+
+        except Exception as e:
+            status = dict(request_status=TRANSACTION_STATUS(0), message=str(e))
+
+        return status
 
     # Usable requests
-    def check_if_market_open(self, list_of_symbols):
+    def check_if_market_open(self, list_of_symbols: list):
+        """Checks if market is open at the moment"""
         _td = datetime.today()
         actual_tmsp = _td.hour * 3600 + _td.minute * 60 + _td.second
         response = self.get_trading_hours(list_of_symbols)
@@ -172,6 +237,7 @@ class XTBClient:
         end=datetime.today(),
         as_df=True,
     ):
+        """Returns candles in given timeframe for given symbol"""
         res = self.send_command(
             "getChartRangeRequest",
             info={
@@ -208,51 +274,67 @@ class XTBClient:
         return df if as_df else candle_history
 
     def get_all_symbols(self):
+        """Returns information about all symbols available in XTB"""
         return self.send_command("getAllSymbols")
 
-    def get_symbol(self, symbol):
+    def get_symbol(self, symbol: str):
+        """Returns information about a specified symbol"""
         self.LOGGER.info(f"CMD: get symbol {symbol}...")
         return self.send_command("getSymbol", symbol=symbol)
 
-    def open_transaction(self, mode, symbol, volume, sl=0, tp=0, message=""):
-        symbol_info = self.get_symbol(symbol)
-        price = symbol_info["ask" if mode.value == 0 else "bid"]
-        try:
-            order = self.send_command(
-                "tradeTransaction",
-                tradeTransInfo={
-                    "cmd": mode.value,
-                    "comment": message,
-                    "ie_deviation": 0,
-                    "order": 0,
-                    "price": price,
-                    "sl": price - sl * 0.0001,
-                    "symbol": symbol,
-                    "tp": price + tp * 0.0001,
-                    "type": 0,
-                    "volume": volume,
-                },
-            )
+    def open_transaction(
+        self,
+        mode: MODES,
+        symbol: str,
+        volume: float,
+        **kwargs,
+    ):
+        """Open transaction wrapper"""
+        return self._transaction(
+            mode, symbol, TRANSACTION_TYPE.OPEN, volume, **kwargs
+        )
 
-            status = self.transaction_status(order.get("order"))
+    def close_transaction(self, trade: TRANSACTION):
+        """Closes a trade"""
+        response = self._transaction(
+            MODES.BUY,
+            trade.symbol,
+            TRANSACTION_TYPE.CLOSE,
+            trade.volume,
+            order=trade.order,
+            price=trade.price,
+        )
+        return response
 
-            status["requestStatus"] = TRANSACTION_STATUS(
-                status["requestStatus"]
-            )
-        except Exception as e:
-            status = dict(
-                request_status=TRANSACTION_STATUS(0), message=str(e)
-            )
+    def close_all(self):
+        self.update_trades()
+        for trade in list(self.trades.values()):
+            retval = self.close_transaction(trade)
+            if retval["request_status"] == TRANSACTION_STATUS.ERROR:
+                return retval
+        self.update_trades()
+        return dict(
+            request_status=TRANSACTION_STATUS.ACCEPTED,
+            message="All transactions closed successfully.",
+        )
 
-        return status
-
-    def transaction_status(self, order_id):
+    def transaction_status(self, order_id: int):
+        """Returns information about a transaction"""
         return self.send_command("tradeTransactionStatus", order=int(order_id))
 
     def get_trades(self):
-        return self.send_command("getTrades", openedOnly=True)
+        """Gets all user trades"""
+        return [
+            TRANSACTION(**t)
+            for t in self.send_command("getTrades", openedOnly=True)
+        ]
 
-    def get_ticks(self, symbols):
+    def update_trades(self):
+        """Gets all user trades and adds them to client variable"""
+        self.trades = {str(t.order): t for t in self.get_trades()}
+
+    def get_ticks(self, symbols: list):
+        """Gets ticks for specified symbols"""
         return self.send_command(
             "getTickPrices",
             level=0,
