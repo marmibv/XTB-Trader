@@ -42,6 +42,11 @@ class PERIOD(enum.Enum):
     ONE_MONTH = 43200
 
 
+class TRANSACTION_TYPE(enum.Enum):
+    OPEN = 0
+    CLOSE = 2
+
+
 class TRANSACTION_STATUS(enum.Enum):
     ERROR = 0
     PENDING = 1
@@ -49,6 +54,29 @@ class TRANSACTION_STATUS(enum.Enum):
     ACCEPTED = 3
     REJECTED = 4
     PRICED = 5
+
+
+class TRANSACTION:
+    def __init__(
+        self,
+        order,
+        symbol,
+        close_price,
+        profit,
+        volume,
+        sl,
+        tp,
+        *args,
+        **kwargs,
+    ):
+        self.order = order
+        self.symbol = symbol
+        self.profit = profit
+        self.volume = volume
+        self.price = close_price
+        self.sl = sl
+        self.tp = tp
+        pass
 
 
 def _get_data(command, **parameters):
@@ -214,9 +242,21 @@ class XTBClient:
         self.LOGGER.info(f"CMD: get symbol {symbol}...")
         return self.send_command("getSymbol", symbol=symbol)
 
-    def open_transaction(self, mode, symbol, volume, sl=0, tp=0, message=""):
+    def transaction(
+        self,
+        mode,
+        symbol,
+        trans_type,
+        volume,
+        sl=0,
+        tp=0,
+        order=0,
+        price=0,
+        message="",
+    ):
         symbol_info = self.get_symbol(symbol)
-        price = symbol_info["ask" if mode.value == 0 else "bid"]
+        if price == 0:
+            price = symbol_info["ask" if mode.value == 0 else "bid"]
         try:
             order = self.send_command(
                 "tradeTransaction",
@@ -224,12 +264,12 @@ class XTBClient:
                     "cmd": mode.value,
                     "comment": message,
                     "ie_deviation": 0,
-                    "order": 0,
+                    "order": order,
                     "price": price,
                     "sl": price - sl * 0.0001,
                     "symbol": symbol,
                     "tp": price + tp * 0.0001,
-                    "type": 0,
+                    "type": trans_type.value,
                     "volume": volume,
                 },
             )
@@ -240,9 +280,7 @@ class XTBClient:
                 status["requestStatus"]
             )
         except Exception as e:
-            status = dict(
-                request_status=TRANSACTION_STATUS(0), message=str(e)
-            )
+            status = dict(request_status=TRANSACTION_STATUS(0), message=str(e))
 
         return status
 
@@ -250,7 +288,10 @@ class XTBClient:
         return self.send_command("tradeTransactionStatus", order=int(order_id))
 
     def get_trades(self):
-        return self.send_command("getTrades", openedOnly=True)
+        return [
+            TRANSACTION(**t)
+            for t in self.send_command("getTrades", openedOnly=True)
+        ]
 
     def get_ticks(self, symbols):
         return self.send_command(

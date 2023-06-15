@@ -5,7 +5,7 @@ from dash import dcc
 from dash import html
 from utility import utility
 from dash.dependencies import Output, Input
-from XTBClient.api import MODES
+from XTBClient.api import MODES, TRANSACTION
 
 app = dash.Dash(__name__)
 
@@ -59,6 +59,7 @@ def update_candlestick_chart(n):
                 status["requestStatus"].name, status["message"]
             )
         )
+    utility.close_all()
     fig = utility.CandleStick(df)
     fig["layout"]["uirevision"] = "some-constant"
 

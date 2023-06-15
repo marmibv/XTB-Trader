@@ -5,7 +5,12 @@ import os
 import random
 import yfinance as yf
 import datetime
-from XTBClient.api import XTBClient, MODES, TRANSACTION_STATUS
+from XTBClient.api import (
+    XTBClient,
+    MODES,
+    TRANSACTION_STATUS,
+    TRANSACTION_TYPE,
+)
 
 
 class CandleStick(go.Figure):
@@ -84,7 +89,8 @@ def collect_yf(symbol, period, interval):
         # df.reset_index(inplace=True)
         # if "Datetime" not in df.columns:
         # df['Datetime'] = df.index
-    sys.stdout = open('output.txt', 'w')
+
+    sys.stdout = open("output.txt", "w")
 
     df = yf.download("EURUSD=x", period=period, interval=interval)
 
@@ -140,7 +146,35 @@ def analyze(df, means):
 def open_transaction(mode: MODES, symbol: str, tp=0, sl=0, volume=0.01):
     client = XTBClient()
     client.login(os.environ.get("XTB_login"), os.environ.get("XTB_pass"))
-    retval = client.open_transaction(mode, symbol, volume, tp=tp, sl=sl)
+    retval = client.transaction(
+        mode, symbol, TRANSACTION_TYPE.OPEN, volume, tp=tp, sl=sl
+    )
     client.logout()
 
     return retval
+
+
+def close_transaction(mode: MODES, symbol: str, order: int, volume: float):
+    client = XTBClient()
+    client.login(os.environ.get("XTB_login"), os.environ.get("XTB_pass"))
+    retval = client.transaction(
+        mode, symbol, TRANSACTION_TYPE.CLOSE, volume, order=order
+    )
+    client.logout()
+
+    return retval
+
+
+def get_transactions():
+    client = XTBClient()
+    client.login(os.environ.get("XTB_login"), os.environ.get("XTB_pass"))
+    retval = client.get_trades()
+    client.logout()
+    return retval
+
+
+def close_all():
+    for tran in get_transactions():
+        close_transaction(
+            MODES.BUY, tran.symbol, tran.order, tran.volume
+        )
