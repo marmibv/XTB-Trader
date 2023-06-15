@@ -342,6 +342,14 @@ class XTBClient:
             timestamp=datetime.now().timestamp(),
         )
 
+    def get_profits(self):
+        self.update_trades()
+        suma = 0
+        for trade in list(self.trades.values()):
+            suma += trade.profit
+
+        return suma
+
 
 class YahooClient:
     def __init__(self):

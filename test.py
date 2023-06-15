@@ -4,17 +4,17 @@ import os
 
 client = XTBClient()
 # client.login(os.environ.get("XTB_login"), os.environ.get("XTB_pass"))
-# client.login(14850296, os.environ.get("XTB_pass"))
+client.login(14850296, os.environ.get("XTB_pass"))
 
-retval = client.get_trades()
+# retval = client.get_trades()
 
-retval = client.open_transaction(
-    MODES.SELL, "EURUSD", 0.5, sl=2, tp=2
-)
+# retval = client.open_transaction(
+#     MODES.SELL, "EURUSD", 0.5, sl=2, tp=2
+# )
 
-retval = client.get_trades()
+# retval = client.get_trades()
 
-retval = client.close_all()
+# retval = client.close_all()
 
 # retval = client.transaction(
 #     MODES.BUY,
@@ -24,5 +24,6 @@ retval = client.close_all()
 #     order=518659615,
 #     price=1.08378,
 # )
+print(client.get_profits())
 
 client.logout()
