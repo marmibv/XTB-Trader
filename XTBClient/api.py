@@ -98,7 +98,7 @@ class XTBClient:
         self.LOGGER = logging.getLogger("XTBApi.api.BaseClient")
         self.trades = {}
 
-    def login(self, user_id, password, mode="demo"):
+    def login(self, user_id: int, password: str, mode="demo"):
         """login command"""
         self.ws = create_connection(f"wss://ws.xtb.com/{mode}")
         response = self._send_command(
@@ -156,93 +156,15 @@ class XTBClient:
         """with check login"""
         return self._login_decorator(self._send_command, command, **kwargs)
 
-    def get_trading_hours(self, trade_position_list):
-        """getTradingHours command"""
-        self.LOGGER.info(
-            f"CMD: get trading hours of len " f"{len(trade_position_list)}..."
-        )
-        response = self.send_command(
-            "getTradingHours", symbols=trade_position_list
-        )
-
-        for symbol in response:
-            for day in symbol["trading"]:
-                day["fromT"] = int(day["fromT"] / 1000)
-                day["toT"] = int(day["toT"] / 1000)
-            for day in symbol["quotes"]:
-                day["fromT"] = int(day["fromT"] / 1000)
-                day["toT"] = int(day["toT"] / 1000)
-        return response
-
-    # Usable requests
-    def check_if_market_open(self, list_of_symbols):
-        _td = datetime.today()
-        actual_tmsp = _td.hour * 3600 + _td.minute * 60 + _td.second
-        response = self.get_trading_hours(list_of_symbols)
-        market_values = {}
-        for symbol in response:
-            today_values = [
-                day
-                for day in symbol["trading"]
-                if day["day"] == _td.isoweekday()
-            ][0]
-            if today_values["fromT"] <= actual_tmsp <= today_values["toT"]:
-                market_values[symbol["symbol"]] = True
-            else:
-                market_values[symbol["symbol"]] = False
-        return market_values
-
-    def get_candles_in_range(
+    def _transaction(
         self,
+        mode: MODES,
         symbol: str,
-        period: PERIOD,
-        start: datetime,
-        end=datetime.today(),
-        as_df=True,
+        trans_type: TRANSACTION_TYPE,
+        volume: float,
+        **kwargs,
     ):
-        res = self.send_command(
-            "getChartRangeRequest",
-            info={
-                "period": period,
-                "start": start.timestamp() * 1000,
-                "end": end.timestamp() * 1000,
-                "symbol": symbol,
-            },
-        )
-
-        candle_history = []
-        for candle in res["rateInfos"]:
-            _pr = candle["open"]
-            op_pr = _pr / 10 ** res["digits"]
-            cl_pr = (_pr + candle["close"]) / 10 ** res["digits"]
-            hg_pr = (_pr + candle["high"]) / 10 ** res["digits"]
-            lw_pr = (_pr + candle["low"]) / 10 ** res["digits"]
-            new_candle_entry = {
-                "timestamp": candle["ctm"] / 1000,
-                "open": op_pr,
-                "close": cl_pr,
-                "high": hg_pr,
-                "low": lw_pr,
-                "volume": candle["vol"],
-            }
-            candle_history.append(new_candle_entry)
-
-        if as_df:
-            df = pd.DataFrame(candle_history)
-            df["timestamp"] = pd.to_datetime(df["timestamp"], unit="s")
-
-            df.set_index("timestamp", inplace=True)
-
-        return df if as_df else candle_history
-
-    def get_all_symbols(self):
-        return self.send_command("getAllSymbols")
-
-    def get_symbol(self, symbol):
-        self.LOGGER.info(f"CMD: get symbol {symbol}...")
-        return self.send_command("getSymbol", symbol=symbol)
-
-    def transaction(self, mode, symbol, trans_type, volume, **kwargs):
+        """Creates a new transaction"""
         try:
             symbol_info = self.get_symbol(symbol)
             price = symbol_info["ask" if mode.value == 0 else "bid"]
@@ -281,48 +203,104 @@ class XTBClient:
 
             status = self.transaction_status(order.get("order"))
 
-            status["requestStatus"] = TRANSACTION_STATUS(
+            status["request_status"] = TRANSACTION_STATUS(
                 status["requestStatus"]
             )
+
+            del status["requestStatus"]
 
         except Exception as e:
             status = dict(request_status=TRANSACTION_STATUS(0), message=str(e))
 
         return status
 
-        # symbol_info = self.get_symbol(symbol)
-        # if price == 0:
-        #     price = symbol_info["ask" if mode.value == 0 else "bid"]
-        # try:
-        #     order = self.send_command(
-        #         "tradeTransaction",
-        #         tradeTransInfo={
-        #             "cmd": mode.value,
-        #             "comment": message,
-        #             "ie_deviation": 0,
-        #             "order": order,
-        #             "price": price,
-        #             "sl": price - sl * 0.0001,
-        #             "symbol": symbol,
-        #             "tp": price + tp * 0.0001,
-        #             "type": trans_type.value,
-        #             "volume": volume,
-        #         },
-        #     )
+    # Usable requests
+    def check_if_market_open(self, list_of_symbols: list):
+        """Checks if market is open at the moment"""
+        _td = datetime.today()
+        actual_tmsp = _td.hour * 3600 + _td.minute * 60 + _td.second
+        response = self.get_trading_hours(list_of_symbols)
+        market_values = {}
+        for symbol in response:
+            today_values = [
+                day
+                for day in symbol["trading"]
+                if day["day"] == _td.isoweekday()
+            ][0]
+            if today_values["fromT"] <= actual_tmsp <= today_values["toT"]:
+                market_values[symbol["symbol"]] = True
+            else:
+                market_values[symbol["symbol"]] = False
+        return market_values
 
-        #     status = self.transaction_status(order.get("order"))
+    def get_candles_in_range(
+        self,
+        symbol: str,
+        period: PERIOD,
+        start: datetime,
+        end=datetime.today(),
+        as_df=True,
+    ):
+        """Returns candles in given timeframe for given symbol"""
+        res = self.send_command(
+            "getChartRangeRequest",
+            info={
+                "period": period,
+                "start": start.timestamp() * 1000,
+                "end": end.timestamp() * 1000,
+                "symbol": symbol,
+            },
+        )
 
-        #     status["requestStatus"] = TRANSACTION_STATUS(
-        #         status["requestStatus"]
-        #     )
-        # except Exception as e:
-        #     status = dict(request_status=TRANSACTION_STATUS(0), message=str(e))
+        candle_history = []
+        for candle in res["rateInfos"]:
+            _pr = candle["open"]
+            op_pr = _pr / 10 ** res["digits"]
+            cl_pr = (_pr + candle["close"]) / 10 ** res["digits"]
+            hg_pr = (_pr + candle["high"]) / 10 ** res["digits"]
+            lw_pr = (_pr + candle["low"]) / 10 ** res["digits"]
+            new_candle_entry = {
+                "timestamp": candle["ctm"] / 1000,
+                "open": op_pr,
+                "close": cl_pr,
+                "high": hg_pr,
+                "low": lw_pr,
+                "volume": candle["vol"],
+            }
+            candle_history.append(new_candle_entry)
 
-        # return status
+        if as_df:
+            df = pd.DataFrame(candle_history)
+            df["timestamp"] = pd.to_datetime(df["timestamp"], unit="s")
+
+            df.set_index("timestamp", inplace=True)
+
+        return df if as_df else candle_history
+
+    def get_all_symbols(self):
+        """Returns information about all symbols available in XTB"""
+        return self.send_command("getAllSymbols")
+
+    def get_symbol(self, symbol: str):
+        """Returns information about a specified symbol"""
+        self.LOGGER.info(f"CMD: get symbol {symbol}...")
+        return self.send_command("getSymbol", symbol=symbol)
+
+    def open_transaction(
+        self,
+        mode: MODES,
+        symbol: str,
+        volume: float,
+        **kwargs,
+    ):
+        """Open transaction wrapper"""
+        return self._transaction(
+            mode, symbol, TRANSACTION_TYPE.OPEN, volume, **kwargs
+        )
 
     def close_transaction(self, trade: TRANSACTION):
-
-        response = self.transaction(
+        """Closes a trade"""
+        response = self._transaction(
             MODES.BUY,
             trade.symbol,
             TRANSACTION_TYPE.CLOSE,
@@ -332,20 +310,35 @@ class XTBClient:
         )
         return response
 
-    def transaction_status(self, order_id):
+    def close_all(self):
+        self.update_trades()
+        for trade in list(self.trades.values()):
+            retval = self.close_transaction(trade)
+            if retval["request_status"] == TRANSACTION_STATUS.ERROR:
+                return retval
+        self.update_trades()
+        return dict(
+            request_status=TRANSACTION_STATUS.ACCEPTED,
+            message="All transactions closed successfully.",
+        )
+
+    def transaction_status(self, order_id: int):
+        """Returns information about a transaction"""
         return self.send_command("tradeTransactionStatus", order=int(order_id))
 
     def get_trades(self):
+        """Gets all user trades"""
         return [
             TRANSACTION(**t)
             for t in self.send_command("getTrades", openedOnly=True)
         ]
-        return self.send_command("getTrades", openedOnly=True)
 
     def update_trades(self):
+        """Gets all user trades and adds them to client variable"""
         self.trades = {str(t.order): t for t in self.get_trades()}
 
-    def get_ticks(self, symbols):
+    def get_ticks(self, symbols: list):
+        """Gets ticks for specified symbols"""
         return self.send_command(
             "getTickPrices",
             level=0,

@@ -8,13 +8,13 @@ client.login(14850296, os.environ.get("XTB_pass"))
 
 retval = client.get_trades()
 
-retval = client.transaction(
-    MODES.SELL, "EURUSD", TRANSACTION_TYPE.OPEN, 0.5
+retval = client.open_transaction(
+    MODES.SELL, "EURUSD", 0.5, sl=2, tp=2
 )
 
 retval = client.get_trades()
 
-retval = client.close_transaction(retval[0])
+retval = client.close_all()
 
 # retval = client.transaction(
 #     MODES.BUY,
