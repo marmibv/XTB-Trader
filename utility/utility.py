@@ -46,13 +46,13 @@ class CandleStick(go.Figure):
         if add_MAs:
             col = iter(["#5e9ddb", "#d914d5"])
             for ma in [col for col in self._df.columns if "MA" in col]:
-                self._add_line(self._df.index, self._df[ma], color=next(col))
+                self.add_line(self._df.index, self._df[ma], color=next(col))
 
-        self.mark_trades()
+        if 'is_trade' in self._df.columns:
+            self.mark_trades()
+            self.connect_trades_with_lines()
 
-        self.connect_trades_with_lines()
-
-    def _add_line(self, x, y, color=None):
+    def add_line(self, x, y, color=None):
         if not color:
             color = "#" + "".join(
                 [random.choice("0123456789ABCDEF") for j in range(6)]
@@ -125,20 +125,20 @@ def collect_yf(symbol, period, interval):
         # if "Datetime" not in df.columns:
         # df['Datetime'] = df.index
 
-    sys.stdout = open("output.txt", "w")
+    # sys.stdout = open("output.txt", "w")
 
     df = yf.download("EURUSD=x", period=period, interval=interval)
 
-    sys.stdout.close()
-    sys.stdout = sys.__stdout__
+    # sys.stdout.close()
+    # sys.stdout = sys.__stdout__
 
     adjust_df(df)
 
-    if not os.path.exists("csvs"):
-        os.makedirs("csvs")
-    df[[col for col in df.columns if col not in "index"]].to_csv(
-        os.path.join("csvs", symbol + "_data.csv"), index=False
-    )
+    # if not os.path.exists("csvs"):
+    #     os.makedirs("csvs")
+    # df[[col for col in df.columns if col not in "index"]].to_csv(
+    #     os.path.join("csvs", symbol + "_data.csv"), index=False
+    # )
     return df
 
 

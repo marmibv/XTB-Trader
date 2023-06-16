@@ -8,7 +8,7 @@ from utility import utility
 from dash.dependencies import Output, Input
 from XTBClient.api import XTBClient, MODES
 
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, url_base_pathname="/dash/")
 
 logging.getLogger("XTBApi.api").setLevel(logging.WARNING)
 
@@ -35,16 +35,17 @@ app.layout = html.Div(
             id="info",
         ),
     ],
-    style={"width": "100%", "height": "100vh", "margin": "0"},
+    id="container",
 )
 
 
 def report(status):
-    print(
-        "TRANSACTION\t{}\t{}".format(
-            status["request_status"].name, status["message"]
-        )
+    rep = "TRANSACTION\t{}\t{}".format(
+        status["request_status"].name, status["message"]
     )
+    print(rep)
+    with open("report", "a+") as f:
+        f.write(rep)
 
 
 @app.callback(
@@ -96,9 +97,6 @@ def update_countdown(n):
 
     current_time = datetime.now()
     remaining_time = target_time - current_time
-
-    if remaining_time.total_seconds() <= 0:
-        return "Countdown ended!"
 
     remaining_seconds = remaining_time.total_seconds()
 
