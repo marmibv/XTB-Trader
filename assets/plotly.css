@@ -7,10 +7,25 @@ html {
     background-color: #1e1e1e;
 }
 
-#countdown {
+/* #countdown {
     position: absolute;
     top: 5%;
     left: 5%;
     font-size: 5rem;
     color: white;
+} */
+#info {
+    position: absolute;
+    top: 5%;
+    left: 5%;
+    font-size: 5rem;
+    /* color: white; */
+    border: 5px solid black;
+    background-color: rgb(15, 168, 156);
+    /* width: 10rem; */
+    /* height: 10rem; */
+}
+
+#countdown {
+    display: block;
 }

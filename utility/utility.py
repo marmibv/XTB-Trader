@@ -44,10 +44,13 @@ class CandleStick(go.Figure):
         self.update_yaxes(gridcolor="#1f292f", showgrid=True)
 
         if add_MAs:
+            col = iter(["#5e9ddb", "#d914d5"])
             for ma in [col for col in self._df.columns if "MA" in col]:
-                self._add_line(self._df.index, self._df[ma])
+                self._add_line(self._df.index, self._df[ma], color=next(col))
 
         self.mark_trades()
+
+        self.connect_trades_with_lines()
 
     def _add_line(self, x, y, color=None):
         if not color:
@@ -72,6 +75,38 @@ class CandleStick(go.Figure):
                 line_width=5,
                 line_dash="dash",
                 line_color="green" if trade[1].is_trade > 0 else "red",
+            )
+
+    def connect_trades_with_lines(self):
+        df = self._df[self._df.is_trade != 0]
+        # for trade in df.iterrows():
+        #     self.add_trace(go.Scatter(
+        #         x=[start_x, end_x], y=[start_y, end_y], mode="lines"
+        #     ))
+        x = list(df.iterrows())
+        pairs = list(zip(x[::2], x[1::2]))
+        pairs = []
+        for i in range(0, len(x)-1):
+            pairs.append((x[i], x[i+1]))
+
+        for pair in pairs:
+            if (
+                pair[0][1].is_trade > 0 and pair[1][1].close > pair[0][1].close
+            ) or (
+                pair[0][1].is_trade < 0 and pair[1][1].close < pair[0][1].close
+            ):
+                color = "blue"
+            else:
+                color = "yellow"
+            self.add_trace(
+                go.Scatter(
+                    x=[pair[0][0], pair[1][0]],
+                    y=[pair[0][1].close, pair[1][1].close],
+                    mode="lines",
+                    line_width=5,
+                    line_color=color,
+                    showlegend=False
+                )
             )
 
 
