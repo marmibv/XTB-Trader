@@ -109,7 +109,7 @@ def get_df(symbol):
 
 def collect_yf(symbol, period, interval):
     def adjust_df(df):
-        df.index = df.index + datetime.timedelta(hours=1)
+        # df.index = df.index + datetime.timedelta(hours=2)
         df.reset_index(inplace=True)
         for col in df.columns:
             df.rename(columns={col: col.lower()}, inplace=True)

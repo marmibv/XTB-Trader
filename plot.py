@@ -54,7 +54,7 @@ app.layout = html.Div(
 
 
 def report(status):
-    rep = "TRANSACTION\t{}\t{}".format(
+    rep = "TRANSACTION\t{}\t{}\n".format(
         status["request_status"].name, status["message"]
     )
     print(rep)
