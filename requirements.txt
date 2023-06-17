@@ -44,3 +44,4 @@ websocket-client==1.5.3
 Werkzeug==2.2.3
 XTBApi==1.0a7
 yfinance==0.2.20
+python-dotenv

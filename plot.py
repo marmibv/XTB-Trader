@@ -7,8 +7,22 @@ from dash import html
 from utility import utility
 from dash.dependencies import Output, Input
 from XTBClient.api import XTBClient, MODES
+from dotenv import load_dotenv
 
-app = dash.Dash(__name__, url_base_pathname="/dash/")
+load_dotenv()
+
+SYMBOL = os.environ.get("symbol")
+PERIOD = os.environ.get("period")
+INTERVAL = os.environ.get("interval")
+MEAN1 = int(os.environ.get("mean1"))
+MEAN2 = int(os.environ.get("mean2"))
+VOLUME = float(os.environ.get("volume"))
+USER_NUM = os.environ.get("XTB_user_num")
+PASSWORD = os.environ.get("XTB_pass")
+
+app = dash.Dash(
+    __name__, url_base_pathname="/{}/".format(os.environ.get("path_prefix"))
+)
 
 logging.getLogger("XTBApi.api").setLevel(logging.WARNING)
 
@@ -55,8 +69,8 @@ def report(status):
 def update_candlestick_chart(n):
     global target_time
 
-    df = utility.collect_yf("EURUSD", "2d", "5m")
-    utility.analyze(df, means=[5, 10])
+    df = utility.collect_yf(SYMBOL, PERIOD, INTERVAL)
+    utility.analyze(df, means=[MEAN1, MEAN2])
     # df = get_df("EURUSD")
     # df = df[-50:]
 
@@ -64,17 +78,15 @@ def update_candlestick_chart(n):
     action_marker = df.iloc[-1].is_trade
     if action_marker != 0:
         client = XTBClient()
-        client.login(
-            os.environ.get("XTB_user_num"), os.environ.get("XTB_pass")
-        )
+        client.login(USER_NUM, PASSWORD)
 
         status = client.close_all()
         report(status)
 
         status = client.open_transaction(
             MODES.BUY if action_marker > 0 else MODES.SELL,
-            "EURUSD",
-            volume=0.2,
+            SYMBOL,
+            volume=VOLUME,
             # tp=10,
             # sl=20,
         )
@@ -110,7 +122,7 @@ def update_countdown(n):
 )
 def update_profit(n):
     client = XTBClient()
-    client.login(os.environ.get("XTB_user_num"), os.environ.get("XTB_pass"))
+    client.login(USER_NUM, PASSWORD)
     profit = client.get_profits()
     client.logout()
     return str(profit)

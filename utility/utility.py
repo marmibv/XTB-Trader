@@ -1,16 +1,9 @@
 import plotly.graph_objects as go
 import pandas as pd
-import sys
 import os
 import random
 import yfinance as yf
 import datetime
-from XTBClient.api import (
-    XTBClient,
-    MODES,
-    TRANSACTION_STATUS,
-    TRANSACTION_TYPE,
-)
 
 
 class CandleStick(go.Figure):
@@ -48,7 +41,7 @@ class CandleStick(go.Figure):
             for ma in [col for col in self._df.columns if "MA" in col]:
                 self.add_line(self._df.index, self._df[ma], color=next(col))
 
-        if 'is_trade' in self._df.columns:
+        if "is_trade" in self._df.columns:
             self.mark_trades()
             self.connect_trades_with_lines()
 
@@ -86,8 +79,8 @@ class CandleStick(go.Figure):
         x = list(df.iterrows())
         pairs = list(zip(x[::2], x[1::2]))
         pairs = []
-        for i in range(0, len(x)-1):
-            pairs.append((x[i], x[i+1]))
+        for i in range(0, len(x) - 1):
+            pairs.append((x[i], x[i + 1]))
 
         for pair in pairs:
             if (
@@ -105,7 +98,7 @@ class CandleStick(go.Figure):
                     mode="lines",
                     line_width=5,
                     line_color=color,
-                    showlegend=False
+                    showlegend=False,
                 )
             )
 
@@ -127,7 +120,7 @@ def collect_yf(symbol, period, interval):
 
     # sys.stdout = open("output.txt", "w")
 
-    df = yf.download("EURUSD=x", period=period, interval=interval)
+    df = yf.download(symbol, period=period, interval=interval)
 
     # sys.stdout.close()
     # sys.stdout = sys.__stdout__
