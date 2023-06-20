@@ -11,7 +11,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
 YF_SYMBOL = os.environ.get("yf_symbol")
 SYMBOL = os.environ.get("xtb_symbol")
 PERIOD = os.environ.get("period")
@@ -22,6 +21,28 @@ VOLUME = float(os.environ.get("volume"))
 USER_NUM = os.environ.get("XTB_user_num")
 PASSWORD = os.environ.get("XTB_pass")
 
+target_time = datetime.now() + timedelta(minutes=1)
+time = 60
+
+# LOGGER
+logFormatter = logging.Formatter(
+    "%(asctime)s\t%(levelname)s\t%(buy_or_sell)s TRANSACTION "
+    + "%(status)s\t%(message)s"
+)
+logger = logging.getLogger(__name__)
+
+fileHandler = logging.FileHandler(".log")
+fileHandler.setFormatter(logFormatter)
+logger.addHandler(fileHandler)
+
+consoleHandler = logging.StreamHandler()
+consoleHandler.setFormatter(logFormatter)
+logger.addHandler(consoleHandler)
+
+logger.setLevel(logging.INFO)
+
+
+# LAYOUT
 external_scripts = [
     {"src": "https://code.jquery.com/jquery-3.5.1.min.js"},
     {"src": "./assets/actions.js"},
@@ -33,10 +54,6 @@ app = dash.Dash(
     external_scripts=external_scripts,
 )
 
-logging.getLogger("XTBApi.api").setLevel(logging.WARNING)
-
-target_time = datetime.now() + timedelta(minutes=1)
-time = 60
 
 app.layout = html.Div(
     [
@@ -77,12 +94,8 @@ app.layout = html.Div(
 
 
 def report(status):
-    rep = "TRANSACTION\t{}\t{}\n".format(
-        status["request_status"].name, status["message"]
-    )
-    print(rep)
-    with open("report", "a+") as f:
-        f.write(rep)
+    status["status"] = status["request_status"].name
+    logger.info(status.pop("message"), extra=status)
 
 
 @app.callback(
@@ -104,7 +117,7 @@ def update_candlestick_chart(n):
         client.login(USER_NUM, PASSWORD)
 
         status = client.close_all()
-        report(status)
+        # utility.report(status)
 
         status = client.open_transaction(
             MODES.BUY if action_marker > 0 else MODES.SELL,
@@ -113,6 +126,7 @@ def update_candlestick_chart(n):
             # tp=10,
             # sl=20,
         )
+        status["buy_or_sell"] = "BUY" if action_marker > 0 else "SELL"
         report(status)
         client.logout()
 

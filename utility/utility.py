@@ -2,6 +2,7 @@ import plotly.graph_objects as go
 import pandas as pd
 import os
 import sys
+import logging
 import datetime
 import random
 import yfinance as yf
@@ -43,7 +44,7 @@ class CandleStick(go.Figure):
                 self.add_line(self._df.index, self._df[ma], color=next(col))
 
         if "is_trade" in self._df.columns:
-            self.mark_trades()
+            # self.mark_trades()
             self.connect_trades_with_lines()
 
     def add_line(self, x, y, color=None):
