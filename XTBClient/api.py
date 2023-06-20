@@ -147,6 +147,8 @@ class XTBClient:
             self.LOGGER.info(f"CMD {command} with {dict_data}: done")
             self.LOGGER.debug(res["returnData"])
             return res["returnData"]
+        if command == 'login':
+            return res['streamSessionId']
 
     def send_command(self, command, **kwargs):
         """with check login"""

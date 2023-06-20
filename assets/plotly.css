@@ -30,8 +30,13 @@ html {
     /* height: 10rem; */
 }
 
-.parameter{
+/* .parameter{
     display: block;
+} */
+
+.parameter h2 {
+    display: inline-block;
+    margin-left: 15px;
 }
 
 

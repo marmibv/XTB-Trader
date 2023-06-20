@@ -30,7 +30,7 @@ external_scripts = [
 app = dash.Dash(
     __name__,
     url_base_pathname="/{}/".format(os.environ.get("path_prefix")),
-    external_scripts=external_scripts
+    external_scripts=external_scripts,
 )
 
 logging.getLogger("XTBApi.api").setLevel(logging.WARNING)
@@ -52,8 +52,21 @@ app.layout = html.Div(
         html.Div(
             [
                 html.Button(id="hide-button"),
-                html.H2(className="parameter", id="countdown"),
-                html.H2(className="parameter", id="profit"),
+                html.Div(
+                    [html.H2("Symbol: "), html.H2(SYMBOL)],
+                    className="parameter",
+                ),
+                html.Div(
+                    [html.H2("Countdown: "), html.H2(id="countdown")],
+                    className="parameter",
+                ),
+                html.Div(
+                    [
+                        html.H2("Profit: "),
+                        html.H2(id="profit"),
+                    ],
+                    className="parameter",
+                ),
                 dcc.Interval(id="interval", interval=1000, n_intervals=0),
             ],
             id="info",
@@ -122,7 +135,7 @@ def update_countdown(n):
 
     remaining_seconds = remaining_time.total_seconds()
 
-    return "Update in: " + str(int(remaining_seconds))
+    return str(int(remaining_seconds))
 
 
 # Update the countdown value
@@ -135,7 +148,7 @@ def update_profit(n):
     client.login(USER_NUM, PASSWORD)
     profit = client.get_profits()
     client.logout()
-    return "Profit: " + str(profit)
+    return str(profit)
 
 
 if __name__ == "__main__":

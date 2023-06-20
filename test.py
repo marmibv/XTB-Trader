@@ -4,8 +4,12 @@ import os
 
 client = XTBClient()
 # client.login(os.environ.get("XTB_login"), os.environ.get("XTB_pass"))
-client.login(14850296, os.environ.get("XTB_pass"))
+retval = client.login(
+    os.environ.get("XTB_user_num"), os.environ.get("XTB_pass")
+)
 
+retval = client.send_command("getProfits", streamSessionId=retval)
+client.send_command("getBalance", streamSessionId="8469308861804289383")
 # retval = client.get_trades()
 
 # retval = client.open_transaction(
@@ -24,6 +28,5 @@ client.login(14850296, os.environ.get("XTB_pass"))
 #     order=518659615,
 #     price=1.08378,
 # )
-print(client.get_profits())
 
 client.logout()
