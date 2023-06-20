@@ -1,9 +1,10 @@
 import plotly.graph_objects as go
 import pandas as pd
 import os
+import sys
+import datetime
 import random
 import yfinance as yf
-import datetime
 
 
 class CandleStick(go.Figure):
@@ -109,7 +110,7 @@ def get_df(symbol):
 
 def collect_yf(symbol, period, interval):
     def adjust_df(df):
-        # df.index = df.index + datetime.timedelta(hours=2)
+        df.index = df.index + datetime.timedelta(hours=1)
         df.reset_index(inplace=True)
         for col in df.columns:
             df.rename(columns={col: col.lower()}, inplace=True)
@@ -118,12 +119,12 @@ def collect_yf(symbol, period, interval):
         # if "Datetime" not in df.columns:
         # df['Datetime'] = df.index
 
-    # sys.stdout = open("output.txt", "w")
+    sys.stdout = open("output.txt", "w")
 
     df = yf.download(symbol, period=period, interval=interval)
 
-    # sys.stdout.close()
-    # sys.stdout = sys.__stdout__
+    sys.stdout.close()
+    sys.stdout = sys.__stdout__
 
     adjust_df(df)
 

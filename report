@@ -1,1 +1,20 @@
-TRANSACTION	ACCEPTED	All transactions closed successfully.TRANSACTION	ACCEPTED	NoneTRANSACTION	ACCEPTED	All transactions closed successfully.TRANSACTION	ACCEPTED	NoneTRANSACTION	ACCEPTED	All transactions closed successfully.TRANSACTION	ACCEPTED	NoneTRANSACTION	ACCEPTED	All transactions closed successfully.TRANSACTION	ACCEPTED	NoneTRANSACTION	ACCEPTED	All transactions closed successfully.TRANSACTION	REJECTED	Market closedTRANSACTION	ACCEPTED	All transactions closed successfully.TRANSACTION	REJECTED	Market closedTRANSACTION	ACCEPTED	All transactions closed successfully.TRANSACTION	REJECTED	Market closed
+TRANSACTION	ACCEPTED	All transactions closed successfully.
+TRANSACTION	ERROR	command failed: {'status': False, 'errorCode': 'BE115', 'errorDescr': 'Symbol EURUSD=x does not exist'}
+TRANSACTION	ACCEPTED	All transactions closed successfully.
+TRANSACTION	ERROR	command failed: {'status': False, 'errorCode': 'BE115', 'errorDescr': 'Symbol EURUSD=x does not exist'}
+TRANSACTION	ACCEPTED	All transactions closed successfully.
+TRANSACTION	ERROR	command failed: {'status': False, 'errorCode': 'BE115', 'errorDescr': 'Symbol EURUSD=x does not exist'}
+TRANSACTION	ACCEPTED	All transactions closed successfully.
+TRANSACTION	ACCEPTED	None
+TRANSACTION	ACCEPTED	All transactions closed successfully.
+TRANSACTION	ACCEPTED	None
+TRANSACTION	ACCEPTED	All transactions closed successfully.
+TRANSACTION	ACCEPTED	None
+TRANSACTION	ACCEPTED	All transactions closed successfully.
+TRANSACTION	ACCEPTED	None
+TRANSACTION	ACCEPTED	All transactions closed successfully.
+TRANSACTION	ACCEPTED	None
+TRANSACTION	ACCEPTED	All transactions closed successfully.
+TRANSACTION	ACCEPTED	None
+TRANSACTION	ACCEPTED	All transactions closed successfully.
+TRANSACTION	ACCEPTED	None

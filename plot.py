@@ -11,7 +11,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-SYMBOL = os.environ.get("symbol")
+
+YF_SYMBOL = os.environ.get("yf_symbol")
+SYMBOL = os.environ.get("xtb_symbol")
 PERIOD = os.environ.get("period")
 INTERVAL = os.environ.get("interval")
 MEAN1 = int(os.environ.get("mean1"))
@@ -20,8 +22,15 @@ VOLUME = float(os.environ.get("volume"))
 USER_NUM = os.environ.get("XTB_user_num")
 PASSWORD = os.environ.get("XTB_pass")
 
+external_scripts = [
+    {"src": "https://code.jquery.com/jquery-3.5.1.min.js"},
+    {"src": "./assets/actions.js"},
+]
+
 app = dash.Dash(
-    __name__, url_base_pathname="/{}/".format(os.environ.get("path_prefix"))
+    __name__,
+    url_base_pathname="/{}/".format(os.environ.get("path_prefix")),
+    external_scripts=external_scripts
 )
 
 logging.getLogger("XTBApi.api").setLevel(logging.WARNING)
@@ -42,14 +51,15 @@ app.layout = html.Div(
         ),
         html.Div(
             [
-                html.H2(id="countdown"),
-                html.H2(id="profit"),
+                html.Button(id="hide-button"),
+                html.H2(className="parameter", id="countdown"),
+                html.H2(className="parameter", id="profit"),
                 dcc.Interval(id="interval", interval=1000, n_intervals=0),
             ],
             id="info",
         ),
     ],
-    id="container",
+    className="container",
 )
 
 
@@ -69,7 +79,7 @@ def report(status):
 def update_candlestick_chart(n):
     global target_time
 
-    df = utility.collect_yf(SYMBOL, PERIOD, INTERVAL)
+    df = utility.collect_yf(YF_SYMBOL, PERIOD, INTERVAL)
     utility.analyze(df, means=[MEAN1, MEAN2])
     # df = get_df("EURUSD")
     # df = df[-50:]
@@ -112,7 +122,7 @@ def update_countdown(n):
 
     remaining_seconds = remaining_time.total_seconds()
 
-    return str(int(remaining_seconds))
+    return "Update in: " + str(int(remaining_seconds))
 
 
 # Update the countdown value
@@ -125,7 +135,7 @@ def update_profit(n):
     client.login(USER_NUM, PASSWORD)
     profit = client.get_profits()
     client.logout()
-    return str(profit)
+    return "Profit: " + str(profit)
 
 
 if __name__ == "__main__":
