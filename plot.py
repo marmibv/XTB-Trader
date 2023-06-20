@@ -107,8 +107,6 @@ def update_candlestick_chart(n):
 
     df = utility.collect_yf(YF_SYMBOL, PERIOD, INTERVAL)
     utility.analyze(df, means=[MEAN1, MEAN2])
-    # df = get_df("EURUSD")
-    # df = df[-50:]
 
     target_time = datetime.now() + timedelta(minutes=1)
     action_marker = df.iloc[-1].is_trade
@@ -117,7 +115,6 @@ def update_candlestick_chart(n):
         client.login(USER_NUM, PASSWORD)
 
         status = client.close_all()
-        # utility.report(status)
 
         status = client.open_transaction(
             MODES.BUY if action_marker > 0 else MODES.SELL,
