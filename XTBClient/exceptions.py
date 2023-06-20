@@ -46,3 +46,5 @@ class TransactionRejected(Exception):
             status_code)
         LOGGER.error(self.msg)
         super().__init__(self.msg)
+
+

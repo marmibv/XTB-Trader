@@ -2,7 +2,6 @@ import plotly.graph_objects as go
 import pandas as pd
 import os
 import sys
-import logging
 import datetime
 import random
 import yfinance as yf
@@ -123,6 +122,8 @@ def collect_yf(symbol, period, interval):
     sys.stdout = open("output.txt", "w")
 
     df = yf.download(symbol, period=period, interval=interval)
+    if df.empty:
+        raise Exception("Failed to fetch data.")
 
     sys.stdout.close()
     sys.stdout = sys.__stdout__

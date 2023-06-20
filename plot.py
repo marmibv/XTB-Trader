@@ -8,6 +8,7 @@ from utility import utility
 from dash.dependencies import Output, Input
 from XTBClient.api import XTBClient, MODES
 from dotenv import load_dotenv
+import plotly.graph_objects as go
 
 load_dotenv()
 
@@ -26,8 +27,7 @@ time = 60
 
 # LOGGER
 logFormatter = logging.Formatter(
-    "%(asctime)s\t%(levelname)s\t%(buy_or_sell)s TRANSACTION "
-    + "%(status)s\t%(message)s"
+    "%(asctime)s\t%(levelname)s\t%(theme)s" + "%(status)s\t%(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,6 @@ logger.setLevel(logging.INFO)
 # LAYOUT
 external_scripts = [
     {"src": "https://code.jquery.com/jquery-3.5.1.min.js"},
-    {"src": "./assets/actions.js"},
 ]
 
 app = dash.Dash(
@@ -98,6 +97,10 @@ def report(status):
     logger.info(status.pop("message"), extra=status)
 
 
+def err(message):
+    logger.error(message, extra={"theme": "", "status": "ERROR"})
+
+
 @app.callback(
     Output("candlestick-chart", "figure"),
     [Input("interval-component", "n_intervals")],
@@ -105,7 +108,13 @@ def report(status):
 def update_candlestick_chart(n):
     global target_time
 
-    df = utility.collect_yf(YF_SYMBOL, PERIOD, INTERVAL)
+    df = None
+    try:
+        df = utility.collect_yf(YF_SYMBOL + "a", PERIOD, INTERVAL)
+    except Exception as e:
+        err(str(e))
+        return go.Figure()
+
     utility.analyze(df, means=[MEAN1, MEAN2])
 
     target_time = datetime.now() + timedelta(minutes=1)
@@ -123,7 +132,9 @@ def update_candlestick_chart(n):
             # tp=10,
             # sl=20,
         )
-        status["buy_or_sell"] = "BUY" if action_marker > 0 else "SELL"
+        status["theme"] = (
+            "BUY TRANSACTION" if action_marker > 0 else "SELL TRANSACTION"
+        )
         report(status)
         client.logout()
 
