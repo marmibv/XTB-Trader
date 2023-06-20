@@ -110,7 +110,7 @@ def update_candlestick_chart(n):
 
     df = None
     try:
-        df = utility.collect_yf(YF_SYMBOL + "a", PERIOD, INTERVAL)
+        df = utility.collect_yf(YF_SYMBOL, PERIOD, INTERVAL)
     except Exception as e:
         err(str(e))
         return go.Figure()
