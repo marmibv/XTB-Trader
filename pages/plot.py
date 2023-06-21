@@ -2,8 +2,7 @@ import dash
 import logging
 import os
 from datetime import datetime, timedelta
-from dash import dcc
-from dash import html
+from dash import dcc, html, callback
 from utility import utility
 from dash.dependencies import Output, Input
 from XTBClient.api import XTBClient, MODES
@@ -25,36 +24,32 @@ PASSWORD = os.environ.get("XTB_pass")
 target_time = datetime.now() + timedelta(minutes=1)
 time = 60
 
-# LOGGER
-logFormatter = logging.Formatter(
-    "%(asctime)s\t%(levelname)s\t%(theme)s\t" + "%(status)s\t%(message)s"
-)
-logger = logging.getLogger(__name__)
 
-fileHandler = logging.FileHandler(".log")
-fileHandler.setFormatter(logFormatter)
-logger.addHandler(fileHandler)
+def logger_init():
+    logFormatter = logging.Formatter(
+        "%(asctime)s\t%(levelname)s\t%(theme)s\t" + "%(status)s\t%(message)s"
+    )
+    logger = logging.getLogger(__name__)
 
-consoleHandler = logging.StreamHandler()
-consoleHandler.setFormatter(logFormatter)
-logger.addHandler(consoleHandler)
+    fileHandler = logging.FileHandler(".log")
+    fileHandler.setFormatter(logFormatter)
+    logger.addHandler(fileHandler)
 
-logger.setLevel(logging.INFO)
+    consoleHandler = logging.StreamHandler()
+    consoleHandler.setFormatter(logFormatter)
+    logger.addHandler(consoleHandler)
 
+    logger.setLevel(logging.INFO)
 
-# LAYOUT
-external_scripts = [
-    {"src": "https://code.jquery.com/jquery-3.5.1.min.js"},
-]
-
-app = dash.Dash(
-    __name__,
-    url_base_pathname="/{}/".format(os.environ.get("path_prefix")),
-    external_scripts=external_scripts,
-)
+    return logger
 
 
-app.layout = html.Div(
+logger = logger_init()
+
+dash.register_page(__name__)
+
+
+layout = html.Div(
     [
         dcc.Graph(
             id="candlestick-chart",
@@ -80,9 +75,6 @@ app.layout = html.Div(
                     [html.H2("Profit: "), html.H2(id="profit")],
                     className="parameter",
                 ),
-                html.Div(
-                    [html.Pre(id="logs")],
-                ),
                 dcc.Interval(id="interval", interval=1000, n_intervals=0),
             ],
             className="info",
@@ -102,7 +94,7 @@ def err(message):
     logger.error(message, extra={"theme": "", "status": "ERROR"})
 
 
-@app.callback(
+@callback(
     Output("candlestick-chart", "figure"),
     [Input("interval-component", "n_intervals")],
 )
@@ -124,8 +116,10 @@ def update_candlestick_chart(n):
         client = XTBClient()
         client.login(USER_NUM, PASSWORD)
 
+        profits = str(client.get_profits())
         status = client.close_all()
-
+        status["message"] += " PROFIT: " + profits
+        report(status)
         status = client.open_transaction(
             MODES.BUY if action_marker > 0 else MODES.SELL,
             SYMBOL,
@@ -146,7 +140,7 @@ def update_candlestick_chart(n):
 
 
 # Update the countdown value
-@app.callback(
+@callback(
     dash.dependencies.Output("countdown", "children"),
     dash.dependencies.Input("interval", "n_intervals"),
 )
@@ -162,7 +156,7 @@ def update_countdown(n):
 
 
 # Update the countdown value
-@app.callback(
+@callback(
     dash.dependencies.Output("profit", "children"),
     dash.dependencies.Input("interval-component", "n_intervals"),
 )
@@ -172,18 +166,3 @@ def update_profit(n):
     profit = client.get_profits()
     client.logout()
     return str(profit)
-
-
-# Update the logs
-@app.callback(
-    dash.dependencies.Output("logs", "children"),
-    dash.dependencies.Input("interval-component", "n_intervals"),
-)
-def update_logs(n):
-    with open(".log", "r") as file:
-        data = file.read().rstrip()
-    return data
-
-
-if __name__ == "__main__":
-    app.run_server(port=8000, host="0.0.0.0", debug=True)
