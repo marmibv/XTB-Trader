@@ -27,7 +27,7 @@ time = 60
 
 # LOGGER
 logFormatter = logging.Formatter(
-    "%(asctime)s\t%(levelname)s\t%(theme)s" + "%(status)s\t%(message)s"
+    "%(asctime)s\t%(levelname)s\t%(theme)s\t" + "%(status)s\t%(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -65,9 +65,9 @@ app.layout = html.Div(
             interval=60000,
             n_intervals=0,
         ),
+        html.Button(id="hide-button"),
         html.Div(
             [
-                html.Button(id="hide-button"),
                 html.Div(
                     [html.H2("Symbol: "), html.H2(SYMBOL)],
                     className="parameter",
@@ -77,14 +77,15 @@ app.layout = html.Div(
                     className="parameter",
                 ),
                 html.Div(
-                    [
-                        html.H2("Profit: "),
-                        html.H2(id="profit"),
-                    ],
+                    [html.H2("Profit: "), html.H2(id="profit")],
                     className="parameter",
+                ),
+                html.Div(
+                    [html.Pre(id="logs")],
                 ),
                 dcc.Interval(id="interval", interval=1000, n_intervals=0),
             ],
+            className="info",
             id="info",
         ),
     ],
@@ -171,6 +172,17 @@ def update_profit(n):
     profit = client.get_profits()
     client.logout()
     return str(profit)
+
+
+# Update the logs
+@app.callback(
+    dash.dependencies.Output("logs", "children"),
+    dash.dependencies.Input("interval-component", "n_intervals"),
+)
+def update_logs(n):
+    with open(".log", "r") as file:
+        data = file.read().rstrip()
+    return data
 
 
 if __name__ == "__main__":
