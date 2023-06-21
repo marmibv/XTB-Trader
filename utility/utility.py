@@ -104,6 +104,16 @@ class CandleStick(go.Figure):
             )
 
 
+# Disable
+def blockPrint():
+    sys.stdout = open(os.devnull, "w")
+
+
+# Restore
+def enablePrint():
+    sys.stdout = sys.__stdout__
+
+
 def get_df(symbol):
     return pd.read_csv(os.path.join("csvs", symbol + "_data.csv"))
 
@@ -119,14 +129,14 @@ def collect_yf(symbol, period, interval):
         # if "Datetime" not in df.columns:
         # df['Datetime'] = df.index
 
-    sys.stdout = open("output.txt", "w")
+    blockPrint()
 
     df = yf.download(symbol, period=period, interval=interval)
+
+    enablePrint()
+
     if df.empty:
         raise Exception("Failed to fetch data.")
-
-    sys.stdout.close()
-    sys.stdout = sys.__stdout__
 
     adjust_df(df)
 
