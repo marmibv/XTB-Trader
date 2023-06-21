@@ -30,10 +30,6 @@ html {
     /* height: 10rem; */
 }
 
-/* .parameter{
-    display: block;
-} */
-
 .parameter h2 {
     display: inline-block;
     margin-left: 15px;
@@ -47,4 +43,10 @@ html {
     display: block !important;
     top: 0%;
     left: 0%;
+}
+
+
+pre {
+    color: white;
+    font-size: 2rem;
 }
