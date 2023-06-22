@@ -116,10 +116,14 @@ def update_candlestick_chart(n):
         client = XTBClient()
         client.login(USER_NUM, PASSWORD)
 
+        # CLOSE ALL
         profits = str(client.get_profits())
         status = client.close_all()
         status["message"] += " PROFIT: " + profits
+        status["theme"] = "CLOSE ALL"
         report(status)
+
+        # OPEN NEW
         status = client.open_transaction(
             MODES.BUY if action_marker > 0 else MODES.SELL,
             SYMBOL,
@@ -127,10 +131,9 @@ def update_candlestick_chart(n):
             # tp=10,
             # sl=20,
         )
-        status["theme"] = (
-            "BUY TRANSACTION" if action_marker > 0 else "SELL TRANSACTION"
-        )
+        status["theme"] = "NEW BUY" if action_marker > 0 else "NEW SELL"
         report(status)
+
         client.logout()
 
     fig = utility.CandleStick(df)
