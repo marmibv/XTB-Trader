@@ -80,6 +80,10 @@ layout = html.Div(
             className="info",
             id="info",
         ),
+        html.Div(
+            [html.Pre(id="logs-plot-page")],
+        ),
+        dcc.Interval(id="logs-plot-interval", interval=2000, n_intervals=0),
     ],
     className="container",
 )
@@ -171,3 +175,16 @@ def update_profit(n):
     profit = client.get_profits()
     client.logout()
     return str(profit)
+
+# Update the logs
+@callback(
+    dash.dependencies.Output("logs-plot-page", "children"),
+    dash.dependencies.Input("logs-plot-interval", "n_intervals"),
+)
+def update_logs(n):
+    if not os.path.exists(".log"):
+        return "Logs not found."
+    with open(".log", "r") as file:
+        data = file.read().rstrip()
+    return data
+

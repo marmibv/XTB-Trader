@@ -46,7 +46,12 @@ html {
 }
 
 
+/* #logs-plot-page {
+    transform: translateY(100vh);
+} */
+
 pre {
+    position: relative;
     color: white;
     font-size: 2rem;
 }
