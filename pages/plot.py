@@ -87,6 +87,8 @@ layout = html.Div(
 
 def report(status):
     status["status"] = status["request_status"].name
+    if status.get("message") is None:
+        status["message"] = "-"
     logger.info(status.pop("message"), extra=status)
 
 
