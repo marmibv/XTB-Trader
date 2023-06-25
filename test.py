@@ -1,38 +1,83 @@
-from XTBClient.api import XTBClient, MODES, TRANSACTION_TYPE
-from time import sleep
+from XTBClient.api import XTBClient, MODES
+from XTBClient import exceptions
 import os
-from utility import utility
 
-# client = XTBClient()
-# client.login(os.environ.get("XTB_login"), os.environ.get("XTB_pass"))
-# retval = client.login(
-    # os.environ.get("XTB_user_num"), os.environ.get("XTB_pass")
-# )
+# Incorrect login ------------------------------------------------------------
+input("Incorrect login:")
+client = XTBClient()
+try:
+    login_result = client.login(os.environ.get("XTB_user_num"), "12345")
+except Exception as e:
+    print(str(e))
 
-# retval = client.send_command("getProfits", streamSessionId=retval)
-# client.send_command("getBalance", streamSessionId="8469308861804289383")
-# retval = client.get_trades()
+print("Done")
 
-# retval = client.open_transaction(
-#     MODES.SELL, "EURUSD", 0.5, sl=2, tp=2
-# )
+# Incorrect logout -----------------------------------------------------------
+input("Incorrect logout")
+try:
+    client.logout()
+except Exception as e:
+    print(str(e))
+print("Done")
 
-# retval = client.get_trades()
+# Incorrect login + logout ---------------------------------------------------
+input("Incorrect login + logout:")
+client = XTBClient()
+try:
+    login_result = client.login(os.environ.get("XTB_user_num"), "12345")
+    client.logout()
+except Exception as e:
+    print(str(e))
+print("Done")
 
-# retval = client.close_all()
 
-# retval = client.transaction(
-#     MODES.BUY,
-#     "EURUSD",
-#     TRANSACTION_TYPE.CLOSE,
-#     0.01,
-#     order=518659615,
-#     price=1.08378,
-# )
+# Correct login -------------------------------------------------------------
+input("Correct login:")
+client = XTBClient()
+login_result = client.login(
+    os.environ.get("XTB_user_num"), os.environ.get("XTB_pass")
+)
+client.logout()
+print("Done")
 
-# client.logout()
+# Correct Open Transaction no SL or TP -------------------------------------
+input("Open transaction normal, no SL or TP:")
+client = XTBClient()
+login_result = client.login(
+    os.environ.get("XTB_user_num"), os.environ.get("XTB_pass")
+)
+retval = client.open_transaction(MODES.BUY, "BTC-USD", 0.01)
+client.logout()
+print("Done")
 
-utility.blockPrint()
-print("hi")
-utility.enablePrint()
-print("hi")
+
+# Correct Open Transaction with SL and TP ---------------------------------
+input("Open transaction normal, with SL and TP:")
+client = XTBClient()
+login_result = client.login(
+    os.environ.get("XTB_user_num"), os.environ.get("XTB_pass")
+)
+retval = client.open_transaction(MODES.BUY, "BTC-USD", 0.01, sl=1, tp=1)
+client.logout()
+print("Done")
+
+
+# Incorrect Open Transaction no SL or TP ---------------------------------
+input("Open transaction incorrect, no SL or TP:")
+client = XTBClient()
+login_result = client.login(
+    os.environ.get("XTB_user_num"), os.environ.get("XTB_pass")
+)
+retval = client.open_transaction(MODES.BUY, "BTC-USD", 1.1)
+client.logout()
+print("Done")
+
+# Incorrect Open Transaction with SL and TP ---------------------------------
+input("Open transaction incorrect, wrong SL or TP:")
+client = XTBClient()
+login_result = client.login(
+    os.environ.get("XTB_user_num"), os.environ.get("XTB_pass")
+)
+retval = client.open_transaction(MODES.BUY, "BTC-USD", 0.01, sl=100, tp=200)
+client.logout()
+print("Done")

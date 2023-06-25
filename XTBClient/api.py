@@ -7,7 +7,10 @@ import json
 import yfinance as yf
 from .exceptions import NotLogged, SocketError, CommandFailed
 from websocket import create_connection
-from websocket._exceptions import WebSocketConnectionClosedException
+from websocket._exceptions import (
+    WebSocketConnectionClosedException,
+    WebSocketAddressException,
+)
 
 
 LOGIN_TIMEOUT = 120
@@ -96,7 +99,10 @@ class XTBClient:
 
     def login(self, user_id: int, password: str, mode="demo"):
         """login command"""
-        self.ws = create_connection(f"wss://ws.xtb.com/{mode}")
+        try:
+            self.ws = create_connection(f"wss://ws.xtb.com/{mode}")
+        except WebSocketAddressException:
+            raise SocketError("Failed to connect to the server")
         response = self._send_command(
             "login", userId=user_id, password=password
         )
@@ -137,7 +143,12 @@ class XTBClient:
             self.ws.send(json.dumps(dict_data))
             response = self.ws.recv()
         except WebSocketConnectionClosedException:
-            raise SocketError()
+            raise SocketError("Connection closed")
+        except WebSocketAddressException:
+            raise SocketError("Failed to connect to the server")
+        except AttributeError:
+            raise SocketError("Not connected to the server")
+
         self._time_last_request = time.time()
         res = json.loads(response)
         if res["status"] is False:
@@ -147,8 +158,8 @@ class XTBClient:
             self.LOGGER.info(f"CMD {command} with {dict_data}: done")
             self.LOGGER.debug(res["returnData"])
             return res["returnData"]
-        if command == 'login':
-            return res['streamSessionId']
+        if command == "login":
+            return res["streamSessionId"]
 
     def send_command(self, command, **kwargs):
         """with check login"""

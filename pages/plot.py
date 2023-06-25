@@ -176,6 +176,7 @@ def update_profit(n):
     client.logout()
     return str(profit)
 
+
 # Update the logs
 @callback(
     dash.dependencies.Output("logs-plot-page", "children"),
@@ -187,4 +188,3 @@ def update_logs(n):
     with open(".log", "r") as file:
         data = file.read().rstrip()
     return data
-
