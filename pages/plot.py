@@ -28,9 +28,8 @@ time = 60
 
 def logger_init():
     logFormatter = logging.Formatter(
-        # "%(asctime)s\t%(levelname)s\t%(theme)s\t" + "%(status)s\t%(message)s"
-        "%(asctime)s | %(levelname)s | %(theme)s | "
-        + "%(status)s | %(message)s"
+        "%(asctime)s  %(levelname)-5s  %(theme)-9s  "
+        + "%(status)-8s  %(message)s"
     )
     logger = logging.getLogger(__name__)
 
@@ -94,6 +93,7 @@ layout = html.Div(
 
 def report(status):
     status["status"] = status["request_status"].name
+
     if status.get("message") is None:
         status["message"] = "-"
     logger.info(status.pop("message"), extra=status)
@@ -121,6 +121,7 @@ def update_candlestick_chart(n):
 
     target_time = datetime.now() + timedelta(minutes=1)
     action_marker = df.iloc[-1].is_trade
+    action_marker = 1
     if action_marker != 0:
         try:
             client = XTBClient()
