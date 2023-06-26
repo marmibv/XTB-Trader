@@ -13,51 +13,51 @@ class APITests:
 
         return function_wrapper
 
-    # @label
-    # def incorrect_login(self):
-    #     client = XTBClient()
-    #     try:
-    #         result = client.login(os.environ.get("XTB_user_num"), "12345")
-    #         print("Result: " + str(result))
-    #     except Exception as e:
-    #         print("Entered Except")
-    #         print(str(e))
+    @label
+    def incorrect_login(self):
+        client = XTBClient()
+        try:
+            result = client.login(os.environ.get("XTB_user_num"), "12345")
+            print("Result: " + str(result))
+        except Exception as e:
+            print("Entered Except")
+            print(str(e))
 
-    # @label
-    # def incorrect_logout(self):
-    #     client = XTBClient()
-    #     try:
-    #         result = client.logout()
-    #         print("Result: " + str(result))
-    #     except Exception as e:
-    #         print("Entered Except")
-    #         print(str(e))
+    @label
+    def incorrect_logout(self):
+        client = XTBClient()
+        try:
+            result = client.logout()
+            print("Result: " + str(result))
+        except Exception as e:
+            print("Entered Except")
+            print(str(e))
 
-    # @label
-    # def incorrect_login_logout(self):
-    #     client = XTBClient()
-    #     try:
-    #         result = client.login(os.environ.get("XTB_user_num"), "12345")
-    #         print("Result: " + str(result))
-    #         result = client.logout()
-    #         print("Result: " + str(result))
-    #     except Exception as e:
-    #         print("Entered Except")
-    #         print(str(e))
+    @label
+    def incorrect_login_logout(self):
+        client = XTBClient()
+        try:
+            result = client.login(os.environ.get("XTB_user_num"), "12345")
+            print("Result: " + str(result))
+            result = client.logout()
+            print("Result: " + str(result))
+        except Exception as e:
+            print("Entered Except")
+            print(str(e))
 
-    # @label
-    # def correct_login(self):
-    #     try:
-    #         client = XTBClient()
-    #         result = client.login(
-    #             os.environ.get("XTB_user_num"), os.environ.get("XTB_pass")
-    #         )
-    #         print("Result: " + str(result))
-    #         result = client.logout()
-    #         print("Result: " + str(result))
-    #     except Exception as e:
-    #         print("Entered Except")
-    #         print(str(e))
+    @label
+    def correct_login(self):
+        try:
+            client = XTBClient()
+            result = client.login(
+                os.environ.get("XTB_user_num"), os.environ.get("XTB_pass")
+            )
+            print("Result: " + str(result))
+            result = client.logout()
+            print("Result: " + str(result))
+        except Exception as e:
+            print("Entered Except")
+            print(str(e))
 
     @label
     def correct_open_transaction_no_sl_tp(self):
@@ -119,13 +119,38 @@ class APITests:
             print("Entered Except")
             print(str(e))
 
+    @label
+    def close_all(self):
+        client = XTBClient()
+        try:
+            client.login(
+                os.environ.get("XTB_user_num"), os.environ.get("XTB_pass")
+            )
+            result = client.close_all()
+            print("Result: " + str(result))
+            client.logout()
+        except Exception as e:
+            print("Entered Except")
+            print(str(e))
+
 
 tests = [fun for fun in dir(APITests) if not fun.startswith("_")]
 
 tester = APITests()
 
 
-for test in tests:
+for index, test in enumerate(tests):
+    print("{}. {}".format(index, test))
+print("{}. {}".format(len(tests), "all"))
+
+choice = int(input())
+
+if choice == len(tests):
+    for test in tests:
+        os.system("clear")
+        getattr(tester, test)()
+        input()
+else:
     os.system("clear")
-    getattr(tester, test)()
+    getattr(tester, tests[choice])()
     input()
