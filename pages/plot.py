@@ -2,7 +2,6 @@ import dash
 import logging
 import os
 from datetime import datetime, timedelta
-from tabulate import tabulate
 from dash import dcc, html, callback
 from utility import utility
 from dash.dependencies import Output, Input
@@ -33,7 +32,7 @@ def logger_init():
     )
     logger = logging.getLogger(__name__)
 
-    fileHandler = logging.FileHandler(".log")
+    fileHandler = logging.FileHandler("./.log")
     fileHandler.setFormatter(logFormatter)
     logger.addHandler(fileHandler)
 
@@ -121,7 +120,6 @@ def update_candlestick_chart(n):
 
     target_time = datetime.now() + timedelta(minutes=1)
     action_marker = df.iloc[-1].is_trade
-    action_marker = 1
     if action_marker != 0:
         try:
             client = XTBClient()
