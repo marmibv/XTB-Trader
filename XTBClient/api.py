@@ -5,7 +5,12 @@ import enum
 import time
 import json
 import yfinance as yf
-from .exceptions import NotLogged, SocketError, CommandFailed
+from .exceptions import (
+    NotLogged,
+    SocketError,
+    CommandFailed,
+    TransactionRejected,
+)
 from websocket import create_connection
 from websocket._exceptions import (
     WebSocketConnectionClosedException,
@@ -121,7 +126,7 @@ class XTBClient:
         except SocketError:
             self.login(self._login_data[0], self._login_data[1])
             return func(*args, **kwargs)
-        except Exception as e:
+        except Exception:
             self.login(self._login_data[0], self._login_data[1])
             return func(*args, **kwargs)
 
@@ -163,52 +168,49 @@ class XTBClient:
         **kwargs,
     ):
         """Creates a new transaction"""
-        try:
-            symbol_info = self.get_symbol(symbol)
-            price = symbol_info["ask" if mode.value == 0 else "bid"]
+        symbol_info = self.get_symbol(symbol)
+        price = symbol_info["ask" if mode.value == 0 else "bid"]
 
-            kwargs["price"] = price
+        kwargs["price"] = price
 
-            if "sl" in kwargs:
-                kwargs["sl"] = kwargs["price"] - kwargs["sl"] * 0.0001 * (
-                    -1 * mode.value
-                )
-
-            if "tp" in kwargs:
-                kwargs["tp"] = kwargs["price"] + kwargs["tp"] * 0.0001 * (
-                    -1 * mode.value
-                )
-            # check kwargs
-            accepted_values = [
-                "order",
-                "price",
-                "expiration",
-                "customComment",
-                "offset",
-                "sl",
-                "tp",
-            ]
-            assert all([val in accepted_values for val in kwargs.keys()])
-            info = {
-                "cmd": mode.value,
-                "symbol": symbol,
-                "type": trans_type.value,
-                "volume": volume,
-            }
-            info.update(kwargs)  # update with kwargs parameters
-
-            order = self.send_command("tradeTransaction", tradeTransInfo=info)
-
-            status = self.transaction_status(order.get("order"))
-
-            status["request_status"] = TRANSACTION_STATUS(
-                status["requestStatus"]
+        if "sl" in kwargs:
+            kwargs["sl"] = kwargs["price"] - kwargs["sl"] * 0.0001 * (
+                -1 * mode.value
             )
 
-            del status["requestStatus"]
+        if "tp" in kwargs:
+            kwargs["tp"] = kwargs["price"] + kwargs["tp"] * 0.0001 * (
+                -1 * mode.value
+            )
+        # check kwargs
+        accepted_values = [
+            "order",
+            "price",
+            "expiration",
+            "customComment",
+            "offset",
+            "sl",
+            "tp",
+        ]
+        assert all([val in accepted_values for val in kwargs.keys()])
+        info = {
+            "cmd": mode.value,
+            "symbol": symbol,
+            "type": trans_type.value,
+            "volume": volume,
+        }
+        info.update(kwargs)  # update with kwargs parameters
 
-        except Exception as e:
-            status = dict(request_status=TRANSACTION_STATUS(0), message=str(e))
+        order = self.send_command("tradeTransaction", tradeTransInfo=info)
+
+        status = self.transaction_status(order.get("order"))
+
+        status["request_status"] = TRANSACTION_STATUS(status["requestStatus"])
+
+        del status["requestStatus"]
+
+        if status["request_status"] == TRANSACTION_STATUS.REJECTED:
+            raise TransactionRejected(status["message"])
 
         return status
 
