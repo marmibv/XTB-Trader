@@ -5,15 +5,21 @@ import enum
 import time
 import json
 import yfinance as yf
-from .exceptions import NotLogged, SocketError, CommandFailed
+from .exceptions import (
+    NotLogged,
+    SocketError,
+    CommandFailed,
+    TransactionRejected,
+)
 from websocket import create_connection
-from websocket._exceptions import WebSocketConnectionClosedException
+from websocket._exceptions import (
+    WebSocketConnectionClosedException,
+    WebSocketAddressException,
+)
 
 
 LOGIN_TIMEOUT = 120
 MAX_TIME_INTERVAL = 0.200
-LOGGER = logging.getLogger("XTBApi.api")
-LOGGER.setLevel(logging.INFO)
 
 
 class STATUS(enum.Enum):
@@ -91,25 +97,25 @@ class XTBClient:
         self._time_last_request = time.time() - MAX_TIME_INTERVAL
         self.status = STATUS.NOT_LOGGED
         self.ws = None
-        self.LOGGER = logging.getLogger("XTBApi.api.BaseClient")
         self.trades = {}
 
     def login(self, user_id: int, password: str, mode="demo"):
         """login command"""
-        self.ws = create_connection(f"wss://ws.xtb.com/{mode}")
+        try:
+            self.ws = create_connection(f"wss://ws.xtb.com/{mode}")
+        except WebSocketAddressException:
+            raise SocketError("Failed to connect to the server")
         response = self._send_command(
             "login", userId=user_id, password=password
         )
         self._login_data = (user_id, password)
         self.status = STATUS.LOGGED
-        self.LOGGER.info("CMD: login...")
         return response
 
     def logout(self):
         """logout command"""
         response = self._send_command("logout")
         self.status = STATUS.LOGGED
-        self.LOGGER.info("CMD: logout...")
         return response
 
     def _login_decorator(self, func, *args, **kwargs):
@@ -118,11 +124,9 @@ class XTBClient:
         try:
             return func(*args, **kwargs)
         except SocketError:
-            LOGGER.info("re-logging in due to LOGIN_TIMEOUT gone")
             self.login(self._login_data[0], self._login_data[1])
             return func(*args, **kwargs)
-        except Exception as e:
-            LOGGER.warning(e)
+        except Exception:
             self.login(self._login_data[0], self._login_data[1])
             return func(*args, **kwargs)
 
@@ -130,25 +134,26 @@ class XTBClient:
         dict_data = _get_data(command, **kwargs)
 
         time_interval = time.time() - self._time_last_request
-        # self.LOGGER.debug("took {} s.".format(time_interval))
         if time_interval < MAX_TIME_INTERVAL:
             time.sleep(MAX_TIME_INTERVAL - time_interval)
         try:
             self.ws.send(json.dumps(dict_data))
             response = self.ws.recv()
         except WebSocketConnectionClosedException:
-            raise SocketError()
+            raise SocketError("Connection closed")
+        except WebSocketAddressException:
+            raise SocketError("Failed to connect to the server")
+        except AttributeError:
+            raise SocketError("Not connected to the server")
+
         self._time_last_request = time.time()
         res = json.loads(response)
         if res["status"] is False:
-            self.LOGGER.info(f"CMD {command} with {dict_data}: FAILED")
             raise CommandFailed(res)
         if "returnData" in res.keys():
-            self.LOGGER.info(f"CMD {command} with {dict_data}: done")
-            self.LOGGER.debug(res["returnData"])
             return res["returnData"]
-        if command == 'login':
-            return res['streamSessionId']
+        if command == "login":
+            return res["streamSessionId"]
 
     def send_command(self, command, **kwargs):
         """with check login"""
@@ -163,52 +168,49 @@ class XTBClient:
         **kwargs,
     ):
         """Creates a new transaction"""
-        try:
-            symbol_info = self.get_symbol(symbol)
-            price = symbol_info["ask" if mode.value == 0 else "bid"]
+        symbol_info = self.get_symbol(symbol)
+        price = symbol_info["ask" if mode.value == 0 else "bid"]
 
-            kwargs["price"] = price
+        kwargs["price"] = price
 
-            if "sl" in kwargs:
-                kwargs["sl"] = kwargs["price"] - kwargs["sl"] * 0.0001 * (
-                    -1 * mode.value
-                )
-
-            if "tp" in kwargs:
-                kwargs["tp"] = kwargs["price"] + kwargs["tp"] * 0.0001 * (
-                    -1 * mode.value
-                )
-            # check kwargs
-            accepted_values = [
-                "order",
-                "price",
-                "expiration",
-                "customComment",
-                "offset",
-                "sl",
-                "tp",
-            ]
-            assert all([val in accepted_values for val in kwargs.keys()])
-            info = {
-                "cmd": mode.value,
-                "symbol": symbol,
-                "type": trans_type.value,
-                "volume": volume,
-            }
-            info.update(kwargs)  # update with kwargs parameters
-
-            order = self.send_command("tradeTransaction", tradeTransInfo=info)
-
-            status = self.transaction_status(order.get("order"))
-
-            status["request_status"] = TRANSACTION_STATUS(
-                status["requestStatus"]
+        if "sl" in kwargs:
+            kwargs["sl"] = kwargs["price"] - kwargs["sl"] * 0.0001 * (
+                -1 * mode.value
             )
 
-            del status["requestStatus"]
+        if "tp" in kwargs:
+            kwargs["tp"] = kwargs["price"] + kwargs["tp"] * 0.0001 * (
+                -1 * mode.value
+            )
+        # check kwargs
+        accepted_values = [
+            "order",
+            "price",
+            "expiration",
+            "customComment",
+            "offset",
+            "sl",
+            "tp",
+        ]
+        assert all([val in accepted_values for val in kwargs.keys()])
+        info = {
+            "cmd": mode.value,
+            "symbol": symbol,
+            "type": trans_type.value,
+            "volume": volume,
+        }
+        info.update(kwargs)  # update with kwargs parameters
 
-        except Exception as e:
-            status = dict(request_status=TRANSACTION_STATUS(0), message=str(e))
+        order = self.send_command("tradeTransaction", tradeTransInfo=info)
+
+        status = self.transaction_status(order.get("order"))
+
+        status["request_status"] = TRANSACTION_STATUS(status["requestStatus"])
+
+        del status["requestStatus"]
+
+        if status["request_status"] == TRANSACTION_STATUS.REJECTED:
+            raise TransactionRejected(status["message"])
 
         return status
 
@@ -281,7 +283,6 @@ class XTBClient:
 
     def get_symbol(self, symbol: str):
         """Returns information about a specified symbol"""
-        self.LOGGER.info(f"CMD: get symbol {symbol}...")
         return self.send_command("getSymbol", symbol=symbol)
 
     def open_transaction(

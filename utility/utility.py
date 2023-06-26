@@ -120,6 +120,7 @@ def get_df(symbol):
 
 def collect_yf(symbol, period, interval):
     def adjust_df(df):
+        df.index = pd.to_datetime(df.index)
         df.index = df.index + datetime.timedelta(hours=1)
         df.reset_index(inplace=True)
         for col in df.columns:
