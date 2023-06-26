@@ -15,8 +15,6 @@ from websocket._exceptions import (
 
 LOGIN_TIMEOUT = 120
 MAX_TIME_INTERVAL = 0.200
-LOGGER = logging.getLogger("XTBApi.api")
-LOGGER.setLevel(logging.INFO)
 
 
 class STATUS(enum.Enum):
@@ -94,7 +92,6 @@ class XTBClient:
         self._time_last_request = time.time() - MAX_TIME_INTERVAL
         self.status = STATUS.NOT_LOGGED
         self.ws = None
-        self.LOGGER = logging.getLogger("XTBApi.api.BaseClient")
         self.trades = {}
 
     def login(self, user_id: int, password: str, mode="demo"):
@@ -108,14 +105,12 @@ class XTBClient:
         )
         self._login_data = (user_id, password)
         self.status = STATUS.LOGGED
-        self.LOGGER.info("CMD: login...")
         return response
 
     def logout(self):
         """logout command"""
         response = self._send_command("logout")
         self.status = STATUS.LOGGED
-        self.LOGGER.info("CMD: logout...")
         return response
 
     def _login_decorator(self, func, *args, **kwargs):
@@ -124,11 +119,9 @@ class XTBClient:
         try:
             return func(*args, **kwargs)
         except SocketError:
-            LOGGER.info("re-logging in due to LOGIN_TIMEOUT gone")
             self.login(self._login_data[0], self._login_data[1])
             return func(*args, **kwargs)
         except Exception as e:
-            LOGGER.warning(e)
             self.login(self._login_data[0], self._login_data[1])
             return func(*args, **kwargs)
 
@@ -136,7 +129,6 @@ class XTBClient:
         dict_data = _get_data(command, **kwargs)
 
         time_interval = time.time() - self._time_last_request
-        # self.LOGGER.debug("took {} s.".format(time_interval))
         if time_interval < MAX_TIME_INTERVAL:
             time.sleep(MAX_TIME_INTERVAL - time_interval)
         try:
@@ -152,11 +144,8 @@ class XTBClient:
         self._time_last_request = time.time()
         res = json.loads(response)
         if res["status"] is False:
-            self.LOGGER.info(f"CMD {command} with {dict_data}: FAILED")
             raise CommandFailed(res)
         if "returnData" in res.keys():
-            self.LOGGER.info(f"CMD {command} with {dict_data}: done")
-            self.LOGGER.debug(res["returnData"])
             return res["returnData"]
         if command == "login":
             return res["streamSessionId"]
@@ -292,7 +281,6 @@ class XTBClient:
 
     def get_symbol(self, symbol: str):
         """Returns information about a specified symbol"""
-        self.LOGGER.info(f"CMD: get symbol {symbol}...")
         return self.send_command("getSymbol", symbol=symbol)
 
     def open_transaction(
