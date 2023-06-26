@@ -2,6 +2,7 @@ import dash
 import logging
 import os
 from datetime import datetime, timedelta
+from tabulate import tabulate
 from dash import dcc, html, callback
 from utility import utility
 from dash.dependencies import Output, Input
@@ -27,7 +28,9 @@ time = 60
 
 def logger_init():
     logFormatter = logging.Formatter(
-        "%(asctime)s\t%(levelname)s\t%(theme)s\t" + "%(status)s\t%(message)s"
+        # "%(asctime)s\t%(levelname)s\t%(theme)s\t" + "%(status)s\t%(message)s"
+        "%(asctime)s | %(levelname)s | %(theme)s | "
+        + "%(status)s | %(message)s"
     )
     logger = logging.getLogger(__name__)
 
@@ -119,28 +122,32 @@ def update_candlestick_chart(n):
     target_time = datetime.now() + timedelta(minutes=1)
     action_marker = df.iloc[-1].is_trade
     if action_marker != 0:
-        client = XTBClient()
-        client.login(USER_NUM, PASSWORD)
+        try:
+            client = XTBClient()
+            client.login(USER_NUM, PASSWORD)
 
-        # CLOSE ALL
-        profits = str(client.get_profits())
-        status = client.close_all()
-        status["message"] += " PROFIT: " + profits
-        status["theme"] = "CLOSE ALL"
-        report(status)
+            # CLOSE ALL
+            profits = str(client.get_profits())
+            status = client.close_all()
+            status["message"] += " PROFIT: " + profits
+            status["theme"] = "CLOSE ALL"
+            report(status)
 
-        # OPEN NEW
-        status = client.open_transaction(
-            MODES.BUY if action_marker > 0 else MODES.SELL,
-            SYMBOL,
-            volume=VOLUME,
-            # tp=10,
-            # sl=20,
-        )
-        status["theme"] = "NEW BUY" if action_marker > 0 else "NEW SELL"
-        report(status)
+            # OPEN NEW
+            status = client.open_transaction(
+                MODES.BUY if action_marker > 0 else MODES.SELL,
+                SYMBOL,
+                volume=VOLUME,
+                # tp=10,
+                # sl=20,
+            )
+            status["theme"] = "NEW BUY" if action_marker > 0 else "NEW SELL"
 
-        client.logout()
+            report(status)
+
+            client.logout()
+        except Exception as e:
+            err(str(e))
 
     fig = utility.CandleStick(df)
     fig["layout"]["uirevision"] = "some-constant"
@@ -164,16 +171,20 @@ def update_countdown(n):
     return str(int(remaining_seconds))
 
 
-# Update the countdown value
+# Update the profit value
 @callback(
     dash.dependencies.Output("profit", "children"),
     dash.dependencies.Input("interval-component", "n_intervals"),
 )
 def update_profit(n):
     client = XTBClient()
-    client.login(USER_NUM, PASSWORD)
-    profit = client.get_profits()
-    client.logout()
+    try:
+        client.login(USER_NUM, PASSWORD)
+        profit = client.get_profits()
+        client.logout()
+    except Exception as e:
+        err("Update_profit: " + str(e))
+
     return str(profit)
 
 

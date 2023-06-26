@@ -3,7 +3,7 @@ import os
 
 
 class APITests:
-    def label(func):
+    def test(func):
         def function_wrapper(self):
             print("---------------------------------------------------")
             print("Function: " + func.__name__)
@@ -13,7 +13,7 @@ class APITests:
 
         return function_wrapper
 
-    @label
+    @test
     def incorrect_login(self):
         client = XTBClient()
         try:
@@ -23,7 +23,7 @@ class APITests:
             print("Entered Except")
             print(str(e))
 
-    @label
+    @test
     def incorrect_logout(self):
         client = XTBClient()
         try:
@@ -33,7 +33,7 @@ class APITests:
             print("Entered Except")
             print(str(e))
 
-    @label
+    @test
     def incorrect_login_logout(self):
         client = XTBClient()
         try:
@@ -45,7 +45,7 @@ class APITests:
             print("Entered Except")
             print(str(e))
 
-    @label
+    @test
     def correct_login(self):
         try:
             client = XTBClient()
@@ -59,7 +59,7 @@ class APITests:
             print("Entered Except")
             print(str(e))
 
-    @label
+    @test
     def correct_open_transaction_no_sl_tp(self):
         client = XTBClient()
         try:
@@ -73,7 +73,7 @@ class APITests:
             print("Entered Except")
             print(str(e))
 
-    @label
+    @test
     def correct_open_transaction_with_sl_tp(self):
         client = XTBClient()
         try:
@@ -89,7 +89,7 @@ class APITests:
             print("Entered Except")
             print(str(e))
 
-    @label
+    @test
     def incorrect_open_transaction_no_sl_tp(self):
         client = XTBClient()
         try:
@@ -103,7 +103,7 @@ class APITests:
             print("Entered Except")
             print(str(e))
 
-    @label
+    @test
     def incorrect_open_transaction_with_sl_tp(self):
         client = XTBClient()
         try:
@@ -119,7 +119,7 @@ class APITests:
             print("Entered Except")
             print(str(e))
 
-    @label
+    @test
     def close_all(self):
         client = XTBClient()
         try:
