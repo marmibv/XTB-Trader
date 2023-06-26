@@ -1,83 +1,128 @@
 from XTBClient.api import XTBClient, MODES
-from XTBClient import exceptions
 import os
 
-# Incorrect login ------------------------------------------------------------
-input("Incorrect login:")
-client = XTBClient()
-try:
-    login_result = client.login(os.environ.get("XTB_user_num"), "12345")
-except Exception as e:
-    print(str(e))
 
-print("Done")
+class APITests:
+    def label(func):
+        def function_wrapper(self):
+            print("---------------------------------------------------")
+            print("Function: " + func.__name__)
+            input()
+            func(self)
+            print("---------------------------------------------------\n\n")
 
-# Incorrect logout -----------------------------------------------------------
-input("Incorrect logout")
-try:
-    client.logout()
-except Exception as e:
-    print(str(e))
-print("Done")
+        return function_wrapper
 
-# Incorrect login + logout ---------------------------------------------------
-input("Incorrect login + logout:")
-client = XTBClient()
-try:
-    login_result = client.login(os.environ.get("XTB_user_num"), "12345")
-    client.logout()
-except Exception as e:
-    print(str(e))
-print("Done")
+    @label
+    def incorrect_login(self):
+        client = XTBClient()
+        try:
+            result = client.login(os.environ.get("XTB_user_num"), "12345")
+            print("Result: " + str(result))
+        except Exception as e:
+            print("Entered Except")
+            print(str(e))
+
+    @label
+    def incorrect_logout(self):
+        client = XTBClient()
+        try:
+            result = client.logout()
+            print("Result: " + str(result))
+        except Exception as e:
+            print("Entered Except")
+            print(str(e))
+
+    @label
+    def incorrect_login_logout(self):
+        client = XTBClient()
+        try:
+            result = client.login(os.environ.get("XTB_user_num"), "12345")
+            print("Result: " + str(result))
+            result = client.logout()
+            print("Result: " + str(result))
+        except Exception as e:
+            print("Entered Except")
+            print(str(e))
+
+    @label
+    def correct_login(self):
+        try:
+            client = XTBClient()
+            result = client.login(
+                os.environ.get("XTB_user_num"), os.environ.get("XTB_pass")
+            )
+            print("Result: " + str(result))
+            result = client.logout()
+            print("Result: " + str(result))
+        except Exception as e:
+            print("Entered Except")
+            print(str(e))
+
+    @label
+    def correct_open_transaction_no_sl_tp(self):
+        client = XTBClient()
+        try:
+            client.login(
+                os.environ.get("XTB_user_num"), os.environ.get("XTB_pass")
+            )
+            result = client.open_transaction(MODES.BUY, "BTC-USD", 0.01)
+            print("Result: " + str(result))
+            client.logout()
+        except Exception as e:
+            print("Entered Except")
+            print(str(e))
+
+    @label
+    def correct_open_transaction_with_sl_tp(self):
+        client = XTBClient()
+        try:
+            client.login(
+                os.environ.get("XTB_user_num"), os.environ.get("XTB_pass")
+            )
+            result = client.open_transaction(
+                MODES.BUY, "BTC-USD", 0.01, sl=1, tp=1
+            )
+            print("Result: " + str(result))
+            client.logout()
+        except Exception as e:
+            print("Entered Except")
+            print(str(e))
+
+    @label
+    def incorrect_open_transaction_no_sl_tp(self):
+        client = XTBClient()
+        try:
+            client.login(
+                os.environ.get("XTB_user_num"), os.environ.get("XTB_pass")
+            )
+            result = client.open_transaction(MODES.BUY, "BTC-USD", 1.1)
+            print("Result: " + str(result))
+            client.logout()
+        except Exception as e:
+            print("Entered Except")
+            print(str(e))
+
+    @label
+    def incorrect_open_transaction_with_sl_tp(self):
+        client = XTBClient()
+        try:
+            client.login(
+                os.environ.get("XTB_user_num"), os.environ.get("XTB_pass")
+            )
+            result = client.open_transaction(
+                MODES.BUY, "BTC-USD", 0.01, sl=100, tp=200
+            )
+            print("Result: " + str(result))
+            client.logout()
+        except Exception as e:
+            print("Entered Except")
+            print(str(e))
 
 
-# Correct login -------------------------------------------------------------
-input("Correct login:")
-client = XTBClient()
-login_result = client.login(
-    os.environ.get("XTB_user_num"), os.environ.get("XTB_pass")
-)
-client.logout()
-print("Done")
+tests = [fun for fun in dir(APITests) if not fun.startswith("_")]
 
-# Correct Open Transaction no SL or TP -------------------------------------
-input("Open transaction normal, no SL or TP:")
-client = XTBClient()
-login_result = client.login(
-    os.environ.get("XTB_user_num"), os.environ.get("XTB_pass")
-)
-retval = client.open_transaction(MODES.BUY, "BTC-USD", 0.01)
-client.logout()
-print("Done")
+tester = APITests()
 
-
-# Correct Open Transaction with SL and TP ---------------------------------
-input("Open transaction normal, with SL and TP:")
-client = XTBClient()
-login_result = client.login(
-    os.environ.get("XTB_user_num"), os.environ.get("XTB_pass")
-)
-retval = client.open_transaction(MODES.BUY, "BTC-USD", 0.01, sl=1, tp=1)
-client.logout()
-print("Done")
-
-
-# Incorrect Open Transaction no SL or TP ---------------------------------
-input("Open transaction incorrect, no SL or TP:")
-client = XTBClient()
-login_result = client.login(
-    os.environ.get("XTB_user_num"), os.environ.get("XTB_pass")
-)
-retval = client.open_transaction(MODES.BUY, "BTC-USD", 1.1)
-client.logout()
-print("Done")
-
-# Incorrect Open Transaction with SL and TP ---------------------------------
-input("Open transaction incorrect, wrong SL or TP:")
-client = XTBClient()
-login_result = client.login(
-    os.environ.get("XTB_user_num"), os.environ.get("XTB_pass")
-)
-retval = client.open_transaction(MODES.BUY, "BTC-USD", 0.01, sl=100, tp=200)
-client.logout()
-print("Done")
+for test in tests:
+    getattr(tester, test)()
