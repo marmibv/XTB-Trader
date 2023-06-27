@@ -91,10 +91,14 @@ layout = html.Div(
 
 
 def report(status):
-    status["status"] = status["request_status"].name
+    if isinstance(status, str):
+        status = dict(message=status, theme="", status="")
+    else:
+        status["status"] = status["request_status"].name
 
-    if status.get("message") is None:
-        status["message"] = "-"
+        if "message" not in status:
+            status["message"] = "-"
+
     logger.info(status.pop("message"), extra=status)
 
 
@@ -121,6 +125,7 @@ def update_candlestick_chart(n):
     target_time = datetime.now() + timedelta(minutes=1)
     action_marker = df.iloc[-1].is_trade
     if action_marker != 0:
+        report("Trade found.")
         try:
             client = XTBClient()
             client.login(USER_NUM, PASSWORD)
