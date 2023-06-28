@@ -42,7 +42,7 @@ def logger_init():
     return logger
 
 
-logger = logger_init()
+logger = utility.KLogger(__name__)
 
 dash.register_page(__name__)
 
@@ -67,20 +67,6 @@ layout = html.Div(
 )
 
 
-def report(status):
-    if isinstance(status, str):
-        status = dict(message=status, theme="", status="")
-    else:
-        status["status"] = status["request_status"].name
-
-        if "message" not in status:
-            status["message"] = "-"
-
-    logger.info(status.pop("message"), extra=status)
-
-
-def err(message):
-    logger.error(message, extra={"theme": "", "status": "ERROR"})
 
 
 @callback(
@@ -94,15 +80,16 @@ def update_candlestick_chart(n):
     try:
         df = utility.collect_yf(YF_SYMBOL, PERIOD, INTERVAL)
     except Exception as e:
-        err(str(e))
+        logger.err(str(e))
         return go.Figure()
 
     utility.analyze(df, means=[MEAN1, MEAN2])
 
     target_time = datetime.now() + timedelta(minutes=1)
     action_marker = df.iloc[-1].is_trade
+    action_marker = -1
     if action_marker != 0:
-        report("Trade found.")
+        logger.report("Trade found.")
         try:
             client = XTBClient()
             client.login(USER_NUM, PASSWORD)
@@ -112,7 +99,7 @@ def update_candlestick_chart(n):
             status = client.close_all()
             status["message"] += " PROFIT: " + profits
             status["theme"] = "CLOSE ALL"
-            report(status)
+            logger.report(status)
 
             # OPEN NEW
             status = client.open_transaction(
@@ -124,11 +111,11 @@ def update_candlestick_chart(n):
             )
             status["theme"] = "NEW BUY" if action_marker > 0 else "NEW SELL"
 
-            report(status)
+            logger.report(status)
 
             client.logout()
         except Exception as e:
-            err(str(e))
+            logger.err(str(e))
 
     fig = utility.CandleStick(df)
     fig["layout"]["uirevision"] = "some-constant"

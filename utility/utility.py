@@ -5,6 +5,7 @@ import sys
 import datetime
 import random
 import yfinance as yf
+import logging
 
 
 class CandleStick(go.Figure):
@@ -104,6 +105,40 @@ class CandleStick(go.Figure):
             )
 
 
+class KLogger(logging.Logger):
+    def __init__(self, name: str, level=0) -> None:
+        super().__init__(name, level)
+
+        logFormatter = logging.Formatter(
+            "%(asctime)s  %(levelname)-5s  %(theme)-9s  "
+            + "%(status)-8s  %(message)s"
+        )
+
+        fileHandler = logging.FileHandler("./.log")
+        fileHandler.setFormatter(logFormatter)
+        self.addHandler(fileHandler)
+
+        consoleHandler = logging.StreamHandler()
+        consoleHandler.setFormatter(logFormatter)
+        self.addHandler(consoleHandler)
+
+        self.setLevel(logging.INFO)
+
+    def report(self, status):
+        if isinstance(status, str):
+            status = dict(message=status, theme="", status="")
+        else:
+            status["status"] = status["request_status"].name
+
+            if "message" not in status:
+                status["message"] = "-"
+
+        self.info(status.pop("message"), extra=status)
+
+    def err(self, message):
+        self.error(message, extra={"theme": "", "status": "ERROR"})
+
+
 # Disable
 def blockPrint():
     sys.stdout = open(os.devnull, "w")
@@ -125,7 +160,7 @@ def collect_yf(symbol, period, interval):
         df.reset_index(inplace=True)
         for col in df.columns:
             df.rename(columns={col: col.lower()}, inplace=True)
-        if 'volume' in df.columns:
+        if "volume" in df.columns:
             df.drop(["volume"], axis=1, inplace=True)
         # df.reset_index(inplace=True)
         # if "Datetime" not in df.columns:
