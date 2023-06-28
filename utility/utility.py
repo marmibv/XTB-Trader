@@ -153,7 +153,7 @@ def get_df(symbol):
     return pd.read_csv(os.path.join("csvs", symbol + "_data.csv"))
 
 
-def collect_yf(symbol, period, interval):
+def collect_yf(symbol: str, period: str, interval: str) -> pd.DataFrame:
     def adjust_df(df):
         df.index = pd.to_datetime(df.index)
         df.index = df.index + datetime.timedelta(hours=1)

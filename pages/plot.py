@@ -67,8 +67,6 @@ layout = html.Div(
 )
 
 
-
-
 @callback(
     Output("candlestick-chart", "figure"),
     [Input("plot-interval", "n_intervals")],
