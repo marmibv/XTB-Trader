@@ -21,9 +21,6 @@ VOLUME = float(os.environ.get("volume"))
 USER_NUM = os.environ.get("XTB_user_num")
 PASSWORD = os.environ.get("XTB_pass")
 
-target_time = datetime.now() + timedelta(minutes=1)
-time = 60
-
 
 def logger_init():
     logFormatter = logging.Formatter(
@@ -57,29 +54,9 @@ layout = html.Div(
             style={"width": "100%", "height": "100vh"},
         ),
         dcc.Interval(
-            id="interval-component",
-            interval=60000,
+            id="plot-interval",
+            interval=30000,
             n_intervals=0,
-        ),
-        html.Button(id="hide-button"),
-        html.Div(
-            [
-                html.Div(
-                    [html.H2("Symbol: "), html.H2(SYMBOL)],
-                    className="parameter",
-                ),
-                html.Div(
-                    [html.H2("Countdown: "), html.H2(id="countdown")],
-                    className="parameter",
-                ),
-                html.Div(
-                    [html.H2("Profit: "), html.H2(id="profit")],
-                    className="parameter",
-                ),
-                dcc.Interval(id="interval", interval=1000, n_intervals=0),
-            ],
-            className="info",
-            id="info",
         ),
         html.Div(
             [html.Pre(id="logs-plot-page")],
@@ -108,7 +85,7 @@ def err(message):
 
 @callback(
     Output("candlestick-chart", "figure"),
-    [Input("interval-component", "n_intervals")],
+    [Input("plot-interval", "n_intervals")],
 )
 def update_candlestick_chart(n):
     global target_time
@@ -157,39 +134,6 @@ def update_candlestick_chart(n):
     fig["layout"]["uirevision"] = "some-constant"
 
     return fig
-
-
-# Update the countdown value
-@callback(
-    dash.dependencies.Output("countdown", "children"),
-    dash.dependencies.Input("interval", "n_intervals"),
-)
-def update_countdown(n):
-    global time, target_time
-
-    current_time = datetime.now()
-    remaining_time = target_time - current_time
-
-    remaining_seconds = remaining_time.total_seconds()
-
-    return str(int(remaining_seconds))
-
-
-# Update the profit value
-@callback(
-    dash.dependencies.Output("profit", "children"),
-    dash.dependencies.Input("interval-component", "n_intervals"),
-)
-def update_profit(n):
-    client = XTBClient()
-    try:
-        client.login(USER_NUM, PASSWORD)
-        profit = client.get_profits()
-        client.logout()
-    except Exception as e:
-        err("Update_profit: " + str(e))
-
-    return str(profit)
 
 
 # Update the logs
