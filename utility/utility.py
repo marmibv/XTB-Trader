@@ -125,7 +125,8 @@ def collect_yf(symbol, period, interval):
         df.reset_index(inplace=True)
         for col in df.columns:
             df.rename(columns={col: col.lower()}, inplace=True)
-        df.drop(["volume"], axis=1, inplace=True)
+        if 'volume' in df.columns:
+            df.drop(["volume"], axis=1, inplace=True)
         # df.reset_index(inplace=True)
         # if "Datetime" not in df.columns:
         # df['Datetime'] = df.index
