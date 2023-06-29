@@ -85,7 +85,6 @@ def update_candlestick_chart(n):
 
     target_time = datetime.now() + timedelta(minutes=1)
     action_marker = df.iloc[-1].is_trade
-    action_marker = -1
     if action_marker != 0:
         logger.report("Trade found.")
         try:
