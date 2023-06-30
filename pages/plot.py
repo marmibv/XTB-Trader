@@ -46,6 +46,8 @@ logger = utility.KLogger(__name__)
 
 dash.register_page(__name__)
 
+last_trade_date = None
+
 
 layout = html.Div(
     [
@@ -72,7 +74,7 @@ layout = html.Div(
     [Input("plot-interval", "n_intervals")],
 )
 def update_candlestick_chart(n):
-    global target_time
+    global target_time, last_trade_date
 
     df = None
     try:
@@ -84,8 +86,9 @@ def update_candlestick_chart(n):
     utility.analyze(df, means=[MEAN1, MEAN2])
 
     target_time = datetime.now() + timedelta(minutes=1)
-    action_marker = df.iloc[-1].is_trade
-    if action_marker != 0:
+    last_row = df.iloc[-1]
+    action_marker = last_row.is_trade
+    if action_marker != 0 and last_row[df.columns[0]] != last_trade_date:
         logger.report("Trade found.")
         try:
             client = XTBClient()
@@ -111,6 +114,9 @@ def update_candlestick_chart(n):
             logger.report(status)
 
             client.logout()
+
+            last_trade_date = last_row[df.columns[0]]
+
         except Exception as e:
             logger.err(str(e))
 
