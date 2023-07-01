@@ -130,7 +130,7 @@ class KLogger(logging.Logger):
         else:
             status["status"] = status["request_status"].name
 
-            if "message" not in status:
+            if status.get("message") == None:
                 status["message"] = "-"
 
         self.info(status.pop("message"), extra=status)

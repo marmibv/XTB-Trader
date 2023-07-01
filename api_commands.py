@@ -33,6 +33,7 @@ class APICommander:
             result = client.open_transaction(
                 mode, symbol, volume, sl=sl, tp=tp
             )
+            result["theme"] = "NEW BUY" if mode == MODES.BUY else "NEW SELL"
             logger.report(result)
         except Exception as e:
             print("Entered Except")
@@ -42,7 +43,17 @@ class APICommander:
     def close_all(self, client):
         try:
             result = client.close_all()
+            result["theme"] = "CLOSE ALL"
             logger.report(result)
+        except Exception as e:
+            print("Entered Except")
+            logger.err(str(e))
+
+    @login
+    def get_all_symbols(self, client):
+        try:
+            result = client.get_all_symbols()
+            logger.report(str(result))
         except Exception as e:
             print("Entered Except")
             logger.err(str(e))

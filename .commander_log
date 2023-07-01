@@ -1,7 +1,0 @@
-2023-07-01 10:53:25,298  ERROR             ERROR     XTBClient.open_transaction() takes 4 positional arguments but 6 were given
-2023-07-01 10:54:41,834  ERROR             ERROR     Transaction rejected: Invalid s/l or t/p price
-2023-07-01 10:54:58,999  ERROR             ERROR     Transaction rejected: Invalid s/l or t/p price
-2023-07-01 10:57:57,403  ERROR             ERROR     Transaction rejected: Invalid s/l or t/p price
-2023-07-01 10:59:27,696  ERROR             ERROR     Transaction rejected: Invalid s/l or t/p price
-2023-07-01 11:00:14,810  ERROR             ERROR     Transaction rejected: Market closed
-2023-07-01 11:01:40,085  ERROR             ERROR     could not convert string to float: 'asd'
