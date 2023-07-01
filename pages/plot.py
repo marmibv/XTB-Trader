@@ -22,24 +22,24 @@ USER_NUM = os.environ.get("XTB_user_num")
 PASSWORD = os.environ.get("XTB_pass")
 
 
-def logger_init():
-    logFormatter = logging.Formatter(
-        "%(asctime)s  %(levelname)-5s  %(theme)-9s  "
-        + "%(status)-8s  %(message)s"
-    )
-    logger = logging.getLogger(__name__)
+# def logger_init():
+#     logFormatter = logging.Formatter(
+#         "%(asctime)s  %(levelname)-5s  %(theme)-9s  "
+#         + "%(status)-8s  %(message)s"
+#     )
+#     logger = logging.getLogger(__name__)
 
-    fileHandler = logging.FileHandler("./.log")
-    fileHandler.setFormatter(logFormatter)
-    logger.addHandler(fileHandler)
+#     fileHandler = logging.FileHandler("./.log")
+#     fileHandler.setFormatter(logFormatter)
+#     logger.addHandler(fileHandler)
 
-    consoleHandler = logging.StreamHandler()
-    consoleHandler.setFormatter(logFormatter)
-    logger.addHandler(consoleHandler)
+#     consoleHandler = logging.StreamHandler()
+#     consoleHandler.setFormatter(logFormatter)
+#     logger.addHandler(consoleHandler)
 
-    logger.setLevel(logging.INFO)
+#     logger.setLevel(logging.INFO)
 
-    return logger
+#     return logger
 
 
 logger = utility.KLogger(__name__)

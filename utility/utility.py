@@ -106,7 +106,7 @@ class CandleStick(go.Figure):
 
 
 class KLogger(logging.Logger):
-    def __init__(self, name: str, level=0) -> None:
+    def __init__(self, name: str, level=0, filename="./.log") -> None:
         super().__init__(name, level)
 
         logFormatter = logging.Formatter(
@@ -114,7 +114,7 @@ class KLogger(logging.Logger):
             + "%(status)-8s  %(message)s"
         )
 
-        fileHandler = logging.FileHandler("./.log")
+        fileHandler = logging.FileHandler(filename)
         fileHandler.setFormatter(logFormatter)
         self.addHandler(fileHandler)
 
