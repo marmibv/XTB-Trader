@@ -21,16 +21,20 @@ LOGIN_TIMEOUT = 120
 MAX_TIME_INTERVAL = 0.200
 
 
+# The class STATUS is an enumeration that represents the possible states of
+# being logged or not logged.
 class STATUS(enum.Enum):
     LOGGED = enum.auto()
     NOT_LOGGED = enum.auto()
 
 
+# The class MODES is an enumeration that represents two modes, BUY and SELL.
 class MODES(enum.Enum):
     BUY = 0
     SELL = 1
 
 
+# The PERIOD class defines different time periods in minutes.
 class PERIOD(enum.Enum):
     ONE_MINUTE = 1
     FIVE_MINUTES = 5
@@ -43,11 +47,15 @@ class PERIOD(enum.Enum):
     ONE_MONTH = 43200
 
 
+# The class TRANSACTION_TYPE defines an enumeration for different types of
+# transactions, including OPEN and CLOSE.
 class TRANSACTION_TYPE(enum.Enum):
     OPEN = 0
     CLOSE = 2
 
 
+# The class TRANSACTION_STATUS defines an enumeration of different
+# transaction statuses.
 class TRANSACTION_STATUS(enum.Enum):
     ERROR = 0
     PENDING = 1
@@ -57,6 +65,9 @@ class TRANSACTION_STATUS(enum.Enum):
     PRICED = 5
 
 
+# The TRANSACTION class represents a transaction with various attributes
+# such as order type, symbol, profit, volume, close price, stop loss,
+# and take profit.
 class TRANSACTION:
     def __init__(
         self,
@@ -79,7 +90,16 @@ class TRANSACTION:
         self.tp = tp
 
 
-def _get_data(command, **parameters):
+def _get_data(command: str, **parameters) -> dict:
+    """
+    The function `_get_data` takes a command and optional parameters as input
+    and returns a dictionary containing the command and arguments.
+
+    :param command: The `command` parameter is a string that represents the
+    command you want to execute.
+    :type command: str
+    :return: A dictionary is being returned.
+    """
     data = {
         "command": command,
     }
@@ -90,16 +110,41 @@ def _get_data(command, **parameters):
     return data
 
 
+# The XTBClient class is a client for interacting with the XTB trading
+# platform, keeping track of
+# login data, request time intervals, status, WebSocket connection, and trades.
 class XTBClient:
-    def __init__(self):
+    def __init__(self) -> None:
+        """
+        The above code snippet defines a class with several attributes and
+        initializes them in the constructor.
+        """
         self._login_data = None
         self._time_last_request = time.time() - MAX_TIME_INTERVAL
         self.status = STATUS.NOT_LOGGED
         self.ws = None
         self.trades = {}
 
-    def login(self, user_id: int, password: str, mode="demo"):
-        """login command"""
+    def login(self, user_id: int, password: str, mode: str = "demo") -> dict:
+        """
+        The `login` function establishes a WebSocket connection to a server and
+        sends a login command with the provided user ID and password.
+
+        :param user_id: The user_id parameter is an integer that represents the
+        user's ID or account number
+        :type user_id: int
+        :param password: The `password` parameter is a string that represents
+        the user's password for
+        authentication
+        :type password: str
+        :param mode: The "mode" parameter is used to specify the mode of the
+        connection. It is set to "demo"
+        by default, which means it connects to a demo server. However, you can
+        also set it to "real" to
+        connect to a real server, defaults to demo
+        :type mode: str (optional)
+        :return: The login method returns a dictionary.
+        """
         try:
             self.ws = create_connection(f"wss://ws.xtb.com/{mode}")
         except WebSocketAddressException:
@@ -155,7 +200,15 @@ class XTBClient:
             return res["streamSessionId"]
 
     def send_command(self, command, **kwargs):
-        """with check login"""
+        """
+        The `send_command` function is a decorator that adds a login step before executing the specified
+        command.
+
+        :param command: The `command` parameter is a string that represents the command to be sent
+        :return: The send_command method is returning the result of calling the _login_decorator method with
+        the _send_command method, the command, and any additional keyword arguments passed to the
+        send_command method.
+        """
         return self._login_decorator(self._send_command, command, **kwargs)
 
     def _transaction(
@@ -309,6 +362,12 @@ class XTBClient:
         return response
 
     def close_all(self):
+        """
+        The `close_all` function closes all transactions and returns a status message.
+        :return: a dictionary with two key-value pairs. The first key is "request_status" and the value is
+        the constant TRANSACTION_STATUS.ACCEPTED. The second key is "message" and the value is the string
+        "All transactions closed successfully."
+        """
         self.update_trades()
         for trade in list(self.trades.values()):
             retval = self.close_transaction(trade)
@@ -332,11 +391,25 @@ class XTBClient:
         ]
 
     def update_trades(self):
-        """Gets all user trades and adds them to client variable"""
+        """
+        The function "update_trades" retrieves all user trades and assigns them to the "trades" variable of
+        the client.
+        """
         self.trades = {str(t.order): t for t in self.get_trades()}
 
     def get_ticks(self, symbols: list):
-        """Gets ticks for specified symbols"""
+        """
+        The function `get_ticks` sends a command to retrieve tick prices
+        for a list of symbols, with a specified level and timestamp.
+
+        :param symbols: The `symbols` parameter is a list of symbols for
+        which you want to retrieve tick
+        prices. Each symbol represents a financial instrument such as a stock,
+        currency pair, or commodity
+        :type symbols: list
+        :return: The `get_ticks` function is returning the result of calling
+        the `send_command` method with the specified arguments.
+        """
         return self.send_command(
             "getTickPrices",
             level=0,
@@ -345,11 +418,14 @@ class XTBClient:
         )
 
     def get_profits(self):
+        """
+        The function calculates the total profits from a list of trades.
+        :return: the sum of profits from all trades.
+        """
         self.update_trades()
         suma = 0
         for trade in list(self.trades.values()):
             suma += trade.profit
-
         return suma
 
 
