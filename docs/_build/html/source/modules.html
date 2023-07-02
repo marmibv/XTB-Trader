@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>XTBClient &#8212; XTB-Trader  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="xtbclient">
+<h1>XTBClient<a class="headerlink" href="#xtbclient" title="Permalink to this heading">¶</a></h1>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="XTBClient.html">XTBClient package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="XTBClient.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="XTBClient.html#module-XTBClient.api">XTBClient.api module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="XTBClient.html#XTBClient.api.MODES"><code class="docutils literal notranslate"><span class="pre">MODES</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.MODES.BUY"><code class="docutils literal notranslate"><span class="pre">MODES.BUY</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.MODES.SELL"><code class="docutils literal notranslate"><span class="pre">MODES.SELL</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="XTBClient.html#XTBClient.api.PERIOD"><code class="docutils literal notranslate"><span class="pre">PERIOD</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.PERIOD.FIFTEEN_MINUTES"><code class="docutils literal notranslate"><span class="pre">PERIOD.FIFTEEN_MINUTES</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.PERIOD.FIVE_MINUTES"><code class="docutils literal notranslate"><span class="pre">PERIOD.FIVE_MINUTES</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.PERIOD.FOUR_HOURS"><code class="docutils literal notranslate"><span class="pre">PERIOD.FOUR_HOURS</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.PERIOD.ONE_DAY"><code class="docutils literal notranslate"><span class="pre">PERIOD.ONE_DAY</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.PERIOD.ONE_HOUR"><code class="docutils literal notranslate"><span class="pre">PERIOD.ONE_HOUR</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.PERIOD.ONE_MINUTE"><code class="docutils literal notranslate"><span class="pre">PERIOD.ONE_MINUTE</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.PERIOD.ONE_MONTH"><code class="docutils literal notranslate"><span class="pre">PERIOD.ONE_MONTH</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.PERIOD.ONE_WEEK"><code class="docutils literal notranslate"><span class="pre">PERIOD.ONE_WEEK</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.PERIOD.THIRTY_MINUTES"><code class="docutils literal notranslate"><span class="pre">PERIOD.THIRTY_MINUTES</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="XTBClient.html#XTBClient.api.STATUS"><code class="docutils literal notranslate"><span class="pre">STATUS</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.STATUS.LOGGED"><code class="docutils literal notranslate"><span class="pre">STATUS.LOGGED</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.STATUS.NOT_LOGGED"><code class="docutils literal notranslate"><span class="pre">STATUS.NOT_LOGGED</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="XTBClient.html#XTBClient.api.TRANSACTION"><code class="docutils literal notranslate"><span class="pre">TRANSACTION</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="XTBClient.html#XTBClient.api.TRANSACTION_STATUS"><code class="docutils literal notranslate"><span class="pre">TRANSACTION_STATUS</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.TRANSACTION_STATUS.ACCEPTED"><code class="docutils literal notranslate"><span class="pre">TRANSACTION_STATUS.ACCEPTED</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.TRANSACTION_STATUS.ERROR"><code class="docutils literal notranslate"><span class="pre">TRANSACTION_STATUS.ERROR</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.TRANSACTION_STATUS.PENDING"><code class="docutils literal notranslate"><span class="pre">TRANSACTION_STATUS.PENDING</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.TRANSACTION_STATUS.PRICED"><code class="docutils literal notranslate"><span class="pre">TRANSACTION_STATUS.PRICED</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.TRANSACTION_STATUS.REJECTED"><code class="docutils literal notranslate"><span class="pre">TRANSACTION_STATUS.REJECTED</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.TRANSACTION_STATUS.REQUOTED"><code class="docutils literal notranslate"><span class="pre">TRANSACTION_STATUS.REQUOTED</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="XTBClient.html#XTBClient.api.TRANSACTION_TYPE"><code class="docutils literal notranslate"><span class="pre">TRANSACTION_TYPE</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.TRANSACTION_TYPE.CLOSE"><code class="docutils literal notranslate"><span class="pre">TRANSACTION_TYPE.CLOSE</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.TRANSACTION_TYPE.OPEN"><code class="docutils literal notranslate"><span class="pre">TRANSACTION_TYPE.OPEN</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="XTBClient.html#XTBClient.api.XTBClient"><code class="docutils literal notranslate"><span class="pre">XTBClient</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.XTBClient.check_if_market_open"><code class="docutils literal notranslate"><span class="pre">XTBClient.check_if_market_open()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.XTBClient.close_all"><code class="docutils literal notranslate"><span class="pre">XTBClient.close_all()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.XTBClient.get_all_symbols"><code class="docutils literal notranslate"><span class="pre">XTBClient.get_all_symbols()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.XTBClient.get_candles_in_range"><code class="docutils literal notranslate"><span class="pre">XTBClient.get_candles_in_range()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.XTBClient.get_profits"><code class="docutils literal notranslate"><span class="pre">XTBClient.get_profits()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.XTBClient.get_symbol"><code class="docutils literal notranslate"><span class="pre">XTBClient.get_symbol()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.XTBClient.get_ticks"><code class="docutils literal notranslate"><span class="pre">XTBClient.get_ticks()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.XTBClient.get_trades"><code class="docutils literal notranslate"><span class="pre">XTBClient.get_trades()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.XTBClient.login"><code class="docutils literal notranslate"><span class="pre">XTBClient.login()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.XTBClient.logout"><code class="docutils literal notranslate"><span class="pre">XTBClient.logout()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.XTBClient.open_transaction"><code class="docutils literal notranslate"><span class="pre">XTBClient.open_transaction()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.XTBClient.send_command"><code class="docutils literal notranslate"><span class="pre">XTBClient.send_command()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.XTBClient.transaction_status"><code class="docutils literal notranslate"><span class="pre">XTBClient.transaction_status()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="XTBClient.html#XTBClient.api.XTBClient.update_trades"><code class="docutils literal notranslate"><span class="pre">XTBClient.update_trades()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="XTBClient.html#module-XTBClient.exceptions">XTBClient.exceptions module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="XTBClient.html#xtbapi-exceptions">XTBApi.exceptions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="XTBClient.html#XTBClient.exceptions.CommandFailed"><code class="docutils literal notranslate"><span class="pre">CommandFailed</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="XTBClient.html#XTBClient.exceptions.NotLogged"><code class="docutils literal notranslate"><span class="pre">NotLogged</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="XTBClient.html#XTBClient.exceptions.SocketError"><code class="docutils literal notranslate"><span class="pre">SocketError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="XTBClient.html#XTBClient.exceptions.TransactionRejected"><code class="docutils literal notranslate"><span class="pre">TransactionRejected</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="XTBClient.html#module-XTBClient">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">XTB-Trader</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, Krystian Pielat.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+      |
+      <a href="../_sources/source/modules.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

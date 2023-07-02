@@ -139,6 +139,20 @@ class KLogger(logging.Logger):
         self.error(message, extra={"theme": "", "status": "ERROR"})
 
 
+class YahooClient:
+    def __init__(self):
+        return None
+
+    def get_candles_for_period(
+        self, start: datetime, end: datetime, symbol="EURUSD=X"
+    ) -> pd.DataFrame:
+        return yf.download(
+            symbol,
+            start=start.strftime("%Y-%m-%d"),
+            end=end.strftime("%Y-%m-%d"),
+        )
+
+
 # Disable
 def blockPrint():
     sys.stdout = open(os.devnull, "w")
