@@ -1,11 +1,11 @@
 import dash
-import logging
 import os
 from datetime import datetime, timedelta
 from dash import dcc, html, callback
 from utility import utility
 from dash.dependencies import Output, Input
-from XTBClient.api import XTBClient, MODES
+from XTBClient.api import XTBClient
+from XTBClient.enums import MODES
 from dotenv import load_dotenv
 import plotly.graph_objects as go
 

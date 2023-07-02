@@ -31,9 +31,16 @@
   <h1>Source code for XTBClient.api</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 <span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
-<span class="kn">import</span> <span class="nn">enum</span>
 <span class="kn">import</span> <span class="nn">time</span>
 <span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">from</span> <span class="nn">.enums</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">MODES</span><span class="p">,</span>
+    <span class="n">PERIOD</span><span class="p">,</span>
+    <span class="n">STATUS</span><span class="p">,</span>
+    <span class="n">TRANSACTION</span><span class="p">,</span>
+    <span class="n">TRANSACTION_STATUS</span><span class="p">,</span>
+    <span class="n">TRANSACTION_TYPE</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="kn">from</span> <span class="nn">.exceptions</span> <span class="kn">import</span> <span class="p">(</span>
     <span class="n">NotLogged</span><span class="p">,</span>
     <span class="n">SocketError</span><span class="p">,</span>
@@ -49,64 +56,6 @@
 
 <span class="n">LOGIN_TIMEOUT</span> <span class="o">=</span> <span class="mi">120</span>
 <span class="n">MAX_TIME_INTERVAL</span> <span class="o">=</span> <span class="mf">0.200</span>
-
-
-<div class="viewcode-block" id="STATUS"><a class="viewcode-back" href="../../source/XTBClient.html#XTBClient.api.STATUS">[docs]</a><span class="k">class</span> <span class="nc">STATUS</span><span class="p">(</span><span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">):</span>
-    <span class="n">LOGGED</span> <span class="o">=</span> <span class="n">enum</span><span class="o">.</span><span class="n">auto</span><span class="p">()</span>
-    <span class="n">NOT_LOGGED</span> <span class="o">=</span> <span class="n">enum</span><span class="o">.</span><span class="n">auto</span><span class="p">()</span></div>
-
-
-<div class="viewcode-block" id="MODES"><a class="viewcode-back" href="../../source/XTBClient.html#XTBClient.api.MODES">[docs]</a><span class="k">class</span> <span class="nc">MODES</span><span class="p">(</span><span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">):</span>
-    <span class="n">BUY</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="n">SELL</span> <span class="o">=</span> <span class="mi">1</span></div>
-
-
-<div class="viewcode-block" id="PERIOD"><a class="viewcode-back" href="../../source/XTBClient.html#XTBClient.api.PERIOD">[docs]</a><span class="k">class</span> <span class="nc">PERIOD</span><span class="p">(</span><span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">):</span>
-    <span class="n">ONE_MINUTE</span> <span class="o">=</span> <span class="mi">1</span>
-    <span class="n">FIVE_MINUTES</span> <span class="o">=</span> <span class="mi">5</span>
-    <span class="n">FIFTEEN_MINUTES</span> <span class="o">=</span> <span class="mi">15</span>
-    <span class="n">THIRTY_MINUTES</span> <span class="o">=</span> <span class="mi">30</span>
-    <span class="n">ONE_HOUR</span> <span class="o">=</span> <span class="mi">60</span>
-    <span class="n">FOUR_HOURS</span> <span class="o">=</span> <span class="mi">240</span>
-    <span class="n">ONE_DAY</span> <span class="o">=</span> <span class="mi">1440</span>
-    <span class="n">ONE_WEEK</span> <span class="o">=</span> <span class="mi">10080</span>
-    <span class="n">ONE_MONTH</span> <span class="o">=</span> <span class="mi">43200</span></div>
-
-
-<div class="viewcode-block" id="TRANSACTION_TYPE"><a class="viewcode-back" href="../../source/XTBClient.html#XTBClient.api.TRANSACTION_TYPE">[docs]</a><span class="k">class</span> <span class="nc">TRANSACTION_TYPE</span><span class="p">(</span><span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">):</span>
-    <span class="n">OPEN</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="n">CLOSE</span> <span class="o">=</span> <span class="mi">2</span></div>
-
-
-<div class="viewcode-block" id="TRANSACTION_STATUS"><a class="viewcode-back" href="../../source/XTBClient.html#XTBClient.api.TRANSACTION_STATUS">[docs]</a><span class="k">class</span> <span class="nc">TRANSACTION_STATUS</span><span class="p">(</span><span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">):</span>
-    <span class="n">ERROR</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="n">PENDING</span> <span class="o">=</span> <span class="mi">1</span>
-    <span class="n">REQUOTED</span> <span class="o">=</span> <span class="mi">2</span>
-    <span class="n">ACCEPTED</span> <span class="o">=</span> <span class="mi">3</span>
-    <span class="n">REJECTED</span> <span class="o">=</span> <span class="mi">4</span>
-    <span class="n">PRICED</span> <span class="o">=</span> <span class="mi">5</span></div>
-
-
-<div class="viewcode-block" id="TRANSACTION"><a class="viewcode-back" href="../../source/XTBClient.html#XTBClient.api.TRANSACTION">[docs]</a><span class="k">class</span> <span class="nc">TRANSACTION</span><span class="p">:</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">order</span><span class="p">,</span>
-        <span class="n">symbol</span><span class="p">,</span>
-        <span class="n">close_price</span><span class="p">,</span>
-        <span class="n">profit</span><span class="p">,</span>
-        <span class="n">volume</span><span class="p">,</span>
-        <span class="n">sl</span><span class="p">,</span>
-        <span class="n">tp</span><span class="p">,</span>
-        <span class="o">*</span><span class="n">args</span><span class="p">,</span>
-        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-    <span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="n">order</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">symbol</span> <span class="o">=</span> <span class="n">symbol</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">profit</span> <span class="o">=</span> <span class="n">profit</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">volume</span> <span class="o">=</span> <span class="n">volume</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">price</span> <span class="o">=</span> <span class="n">close_price</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">sl</span> <span class="o">=</span> <span class="n">sl</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">tp</span> <span class="o">=</span> <span class="n">tp</span></div>
 
 
 <span class="k">def</span> <span class="nf">_get_data</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">parameters</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>

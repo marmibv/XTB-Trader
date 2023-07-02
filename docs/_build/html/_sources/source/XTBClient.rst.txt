@@ -12,6 +12,14 @@ XTBClient.api module
    :undoc-members:
    :show-inheritance:
 
+XTBClient.enums module
+----------------------
+
+.. automodule:: XTBClient.enums
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 XTBClient.exceptions module
 ---------------------------
 

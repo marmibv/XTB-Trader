@@ -1,4 +1,5 @@
-from XTBClient.api import XTBClient, MODES
+from XTBClient.api import XTBClient
+from XTBClient.enums import MODES
 import os
 
 
