@@ -1,4 +1,5 @@
 import plotly.graph_objects as go
+import pickle
 import pandas as pd
 import os
 import sys
@@ -233,3 +234,8 @@ def analyze(df, means):
     df_trades["gain"] = (
         df_trades["delta"] * df_trades["is_trade"] + 10 * df_trades["is_trade"]
     )
+
+
+def model_analyze(df, model_name):
+    model = pickle.load(open(os.path.join("../", "models", model_name), "rb"))
+    return model.predict(df)
