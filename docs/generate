@@ -1,0 +1,4 @@
+#!/bin/zsh
+rm -rf _build
+sphinx-apidoc -f -o ./source $1
+make html

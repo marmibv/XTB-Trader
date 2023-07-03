@@ -1,9 +1,15 @@
 import pandas as pd
 from datetime import datetime
-import enum
 import time
 import json
-import yfinance as yf
+from .enums import (
+    MODES,
+    PERIOD,
+    STATUS,
+    TRANSACTION,
+    TRANSACTION_STATUS,
+    TRANSACTION_TYPE,
+)
 from .exceptions import (
     NotLogged,
     SocketError,
@@ -21,65 +27,7 @@ LOGIN_TIMEOUT = 120
 MAX_TIME_INTERVAL = 0.200
 
 
-class STATUS(enum.Enum):
-    LOGGED = enum.auto()
-    NOT_LOGGED = enum.auto()
-
-
-class MODES(enum.Enum):
-    BUY = 0
-    SELL = 1
-
-
-class PERIOD(enum.Enum):
-    ONE_MINUTE = 1
-    FIVE_MINUTES = 5
-    FIFTEEN_MINUTES = 15
-    THIRTY_MINUTES = 30
-    ONE_HOUR = 60
-    FOUR_HOURS = 240
-    ONE_DAY = 1440
-    ONE_WEEK = 10080
-    ONE_MONTH = 43200
-
-
-class TRANSACTION_TYPE(enum.Enum):
-    OPEN = 0
-    CLOSE = 2
-
-
-class TRANSACTION_STATUS(enum.Enum):
-    ERROR = 0
-    PENDING = 1
-    REQUOTED = 2
-    ACCEPTED = 3
-    REJECTED = 4
-    PRICED = 5
-
-
-class TRANSACTION:
-    def __init__(
-        self,
-        order,
-        symbol,
-        close_price,
-        profit,
-        volume,
-        sl,
-        tp,
-        *args,
-        **kwargs,
-    ):
-        self.order = order
-        self.symbol = symbol
-        self.profit = profit
-        self.volume = volume
-        self.price = close_price
-        self.sl = sl
-        self.tp = tp
-
-
-def _get_data(command, **parameters):
+def _get_data(command: str, **parameters) -> dict:
     data = {
         "command": command,
     }
@@ -90,16 +38,40 @@ def _get_data(command, **parameters):
     return data
 
 
+# The XTBClient class is a client for interacting with the XTB trading
+# platform, keeping track of
+# login data, request time intervals, status, WebSocket connection, and trades.
 class XTBClient:
-    def __init__(self):
+    def __init__(self) -> None:
         self._login_data = None
         self._time_last_request = time.time() - MAX_TIME_INTERVAL
         self.status = STATUS.NOT_LOGGED
         self.ws = None
         self.trades = {}
 
-    def login(self, user_id: int, password: str, mode="demo"):
-        """login command"""
+    def login(self, user_id: int, password: str, mode: str = "demo") -> dict:
+        """The `login` function establishes a WebSocket connection to a server
+        and sends a login command with the provided user ID and password.
+
+        Parameters
+        ----------
+        user_id : int
+            The user_id parameter is an integer that represents the user's
+            ID or account number.
+        password : str
+            The `password` parameter is a string that represents the user's
+            password for authentication.
+        mode : str, optional
+            The "mode" parameter is used to specify the mode of the connection.
+            It is set to "demo" by default, which means it connects to a demo
+            server. However, you can also set it to "real" to connect to a real
+            server.
+
+        Returns
+        -------
+            The login method returns a dictionary.
+
+        """
         try:
             self.ws = create_connection(f"wss://ws.xtb.com/{mode}")
         except WebSocketAddressException:
@@ -111,8 +83,15 @@ class XTBClient:
         self.status = STATUS.LOGGED
         return response
 
-    def logout(self):
-        """logout command"""
+    def logout(self) -> dict:
+        """The `logout` function sends a command to log out and updates the
+        status to "logged".
+
+        Returns
+        -------
+            The response from the `_send_command` method is being returned.
+
+        """
         response = self._send_command("logout")
         self.status = STATUS.LOGGED
         return response
@@ -129,7 +108,7 @@ class XTBClient:
             self.login(self._login_data[0], self._login_data[1])
             return func(*args, **kwargs)
 
-    def _send_command(self, command, **kwargs):
+    def _send_command(self, command: str, **kwargs) -> dict:
         dict_data = _get_data(command, **kwargs)
 
         time_interval = time.time() - self._time_last_request
@@ -154,8 +133,21 @@ class XTBClient:
         if command == "login":
             return res["streamSessionId"]
 
-    def send_command(self, command, **kwargs):
-        """with check login"""
+    def send_command(self, command: str, **kwargs) -> dict:
+        """The `send_command` function is a method that sends a
+        command and its arguments to a remote server, after logging in.
+
+        Parameters
+        ----------
+        command : str
+            The `command` parameter is a string that represents the
+            command to be sent.
+
+        Returns
+        -------
+            The send_command method is returning a dictionary.
+
+        """
         return self._login_decorator(self._send_command, command, **kwargs)
 
     def _transaction(
@@ -166,7 +158,6 @@ class XTBClient:
         volume: float,
         **kwargs,
     ):
-        """Creates a new transaction"""
         symbol_info = self.get_symbol(symbol)
         price = symbol_info["ask" if mode.value == 0 else "bid"]
 
@@ -213,9 +204,20 @@ class XTBClient:
 
         return status
 
-    # Usable requests
-    def check_if_market_open(self, list_of_symbols: list):
-        """Checks if market is open at the moment"""
+    def check_if_market_open(self, list_of_symbols: list) -> dict:
+        """The function `check_if_market_open` checks if the market
+        is open for a given list of symbols based on their trading hours.
+
+        Parameters
+        ----------
+        list_of_symbols : list
+            A list of symbols representing different markets or stocks.
+
+        Returns
+        -------
+            a dictionary with market statuses.
+
+        """
         _td = datetime.today()
         actual_tmsp = _td.hour * 3600 + _td.minute * 60 + _td.second
         response = self.get_trading_hours(list_of_symbols)
@@ -238,9 +240,40 @@ class XTBClient:
         period: PERIOD,
         start: datetime,
         end=datetime.today(),
-        as_df=True,
-    ):
-        """Returns candles in given timeframe for given symbol"""
+    ) -> pd.DataFrame:
+        """The `get_candles_in_range` function retrieves candlestick data for
+        a specified symbol and time range, and returns it as a pandas
+        DataFrame.
+
+        Parameters
+        ----------
+        symbol : str
+            The symbol parameter represents the trading symbol or instrument
+            for which you want to retrieve the candlestick data. It could be
+            a stock ticker symbol, cryptocurrency symbol, or any other symbol
+            used in the trading platform you are working with.
+        period : PERIOD
+            The `period` parameter represents the time period for which you
+            want to retrieve the candlestick data. It is of type `PERIOD`,
+            which is likely an enumeration or a custom class that defines
+            different time periods such as 1 minute, 5 minutes, 1 hour, etc.
+        start : datetime
+            The `start` parameter is the starting datetime for the range of
+            candles you want to retrieve. It specifies the beginning of the
+            time period for which you want to fetch the candle data.
+        end
+            The `end` parameter is an optional parameter that specifies the
+            end date and time for the range of candles to retrieve. If no
+            value is provided, it defaults to the current date and time
+            (`datetime.today()`).
+
+        Returns
+        -------
+            The function `get_candles_in_range` returns a pandas DataFrame
+            containing candlestick data for a specified symbol, period,
+            start, and end time.
+
+        """
         res = self.send_command(
             "getChartRangeRequest",
             info={
@@ -268,47 +301,82 @@ class XTBClient:
             }
             candle_history.append(new_candle_entry)
 
-        if as_df:
-            df = pd.DataFrame(candle_history)
-            df["timestamp"] = pd.to_datetime(df["timestamp"], unit="s")
+        df = pd.DataFrame(candle_history)
+        df["timestamp"] = pd.to_datetime(df["timestamp"], unit="s")
 
-            df.set_index("timestamp", inplace=True)
+        df.set_index("timestamp", inplace=True)
 
-        return df if as_df else candle_history
+        return df
 
-    def get_all_symbols(self):
-        """Returns information about all symbols available in XTB"""
+    def get_all_symbols(self) -> list:
+        """The function `get_all_symbols` sends a command to retrieve
+        all symbols and returns them as a list.
+
+        Returns
+        -------
+            a list of symbols with their characteristics.
+
+        """
         return self.send_command("getAllSymbols")
 
-    def get_symbol(self, symbol: str):
-        """Returns information about a specified symbol"""
+    def get_symbol(self, symbol: str) -> dict:
+        """The function `get_symbol` takes a symbol as input and sends
+        a command to retrieve information about that symbol.
+
+        Parameters
+        ----------
+        symbol : str
+            The `symbol` parameter is a string that represents
+            the symbol you want to retrieve information for.
+
+        Returns
+        -------
+            a dictionary with information about the symbol.
+
+        """
         return self.send_command("getSymbol", symbol=symbol)
 
     def open_transaction(
-        self,
-        mode: MODES,
-        symbol: str,
-        volume: float,
-        **kwargs,
-    ):
-        """Open transaction wrapper"""
+        self, mode: MODES, symbol: str, volume: float, **kwargs
+    ) -> dict:
+        """The function "open_transaction" is used to open a transaction
+        with a specified mode, symbol, volume, and additional keyword
+        arguments.
+
+        Parameters
+        ----------
+        mode : MODES
+            The "mode" parameter is of type MODES. It is used to specify
+            the mode of the transaction, such as "buy" or "sell".
+        symbol : str
+            The "symbol" parameter is a string that represents the symbol
+            or identifier of the transaction. It is typically used to identify
+            a specific asset or security in a financial market.
+        volume : float
+            The volume parameter represents the quantity or amount of the
+            symbol being traded in the
+        transaction. It is a float value.
+
+        Returns
+        -------
+            A dictionary with status of the operation.
+
+        """
         return self._transaction(
             mode, symbol, TRANSACTION_TYPE.OPEN, volume, **kwargs
         )
 
-    def close_transaction(self, trade: TRANSACTION):
-        """Closes a trade"""
-        response = self._transaction(
-            MODES.BUY,
-            trade.symbol,
-            TRANSACTION_TYPE.CLOSE,
-            trade.volume,
-            order=trade.order,
-            price=trade.price,
-        )
-        return response
+    def close_all(self) -> dict:
+        """The `close_all` function closes all transactions and returns a dictionary with the request status
+        and a message indicating the success of the operation.
 
-    def close_all(self):
+        Returns
+        -------
+            a dictionary with two key-value pairs. The first key is "request_status" and the value is the
+        constant TRANSACTION_STATUS.ACCEPTED. The second key is "message" and the value is the string "All
+        transactions closed successfully."
+
+        """
         self.update_trades()
         for trade in list(self.trades.values()):
             retval = self.close_transaction(trade)
@@ -320,23 +388,61 @@ class XTBClient:
             message="All transactions closed successfully.",
         )
 
-    def transaction_status(self, order_id: int):
-        """Returns information about a transaction"""
+    def transaction_status(self, order_id: int) -> dict:
+        """The function `transaction_status` sends a command to check the
+        status of a trade transaction with a given order ID.
+
+        Parameters
+        ----------
+        order_id : int
+            The `order_id` parameter is an integer that represents the unique
+            identifier of a trade transaction.
+
+        Returns
+        -------
+            Dictionary with transaction status.
+
+        """
         return self.send_command("tradeTransactionStatus", order=int(order_id))
 
-    def get_trades(self):
-        """Gets all user trades"""
+    def get_trades(self) -> list:
+        """The function `get_trades` returns a list of `TRANSACTION` objects
+        by sending a command to retrieve trades that are currently open.
+
+        Returns
+        -------
+            The code is returning a list of TRANSACTION objects.
+
+        """
         return [
             TRANSACTION(**t)
             for t in self.send_command("getTrades", openedOnly=True)
         ]
 
-    def update_trades(self):
-        """Gets all user trades and adds them to client variable"""
+    def update_trades(self) -> None:
+        """The function updates the "trades" attribute of an object with
+        a dictionary of trades.
+
+        """
         self.trades = {str(t.order): t for t in self.get_trades()}
 
-    def get_ticks(self, symbols: list):
-        """Gets ticks for specified symbols"""
+    def get_ticks(self, symbols: list) -> dict:
+        """The function `get_ticks` sends a command to retrieve tick prices
+        for a list of symbols, with a specified level and timestamp.
+
+        Parameters
+        ----------
+        symbols : list
+            The `symbols` parameter is a list of symbols for which you
+            want to retrieve tick prices. Each symbol represents a
+            financial instrument such as a stock, currency pair, or commodity.
+
+        Returns
+        -------
+            A Dictionary with ticks.
+
+
+        """
         return self.send_command(
             "getTickPrices",
             level=0,
@@ -344,24 +450,17 @@ class XTBClient:
             timestamp=datetime.now().timestamp(),
         )
 
-    def get_profits(self):
+    def get_profits(self) -> float:
+        """The function `get_profits` calculates the total
+        profit from a list of trades.
+
+        Returns
+        -------
+            the sum of profits from all trades.
+
+        """
         self.update_trades()
         suma = 0
         for trade in list(self.trades.values()):
             suma += trade.profit
-
         return suma
-
-
-class YahooClient:
-    def __init__(self):
-        return None
-
-    def get_candles_for_period(
-        self, start: datetime, end: datetime, symbol="EURUSD=X"
-    ) -> pd.DataFrame:
-        return yf.download(
-            symbol,
-            start=start.strftime("%Y-%m-%d"),
-            end=end.strftime("%Y-%m-%d"),
-        )

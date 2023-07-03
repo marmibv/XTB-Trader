@@ -1,4 +1,5 @@
-from XTBClient.api import XTBClient, MODES
+from XTBClient.api import XTBClient
+from XTBClient.enums import MODES
 from utility import utility
 import os
 
@@ -28,11 +29,16 @@ class APICommander:
             )
             symbol = input("Symbol: ").upper()
             volume = float(input("Volume: "))
-            sl = int(input("Stop loss: "))
-            tp = int(input("Take profit: "))
-            result = client.open_transaction(
-                mode, symbol, volume, sl=sl, tp=tp
-            )
+            sl = input("Stop loss: ")
+            tp = input("Take profit: ")
+
+            if sl and tp:
+                result = client.open_transaction(
+                    mode, symbol, volume, sl=int(sl), tp=int(tp)
+                )
+            else:
+                result = client.open_transaction(mode, symbol, volume)
+
             result["theme"] = "NEW BUY" if mode == MODES.BUY else "NEW SELL"
             logger.report(result)
         except Exception as e:

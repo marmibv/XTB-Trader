@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>XTBClient.api &#8212; XTB-Trader  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for XTBClient.api</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">from</span> <span class="nn">.enums</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">MODES</span><span class="p">,</span>
+    <span class="n">PERIOD</span><span class="p">,</span>
+    <span class="n">STATUS</span><span class="p">,</span>
+    <span class="n">TRANSACTION</span><span class="p">,</span>
+    <span class="n">TRANSACTION_STATUS</span><span class="p">,</span>
+    <span class="n">TRANSACTION_TYPE</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.exceptions</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">NotLogged</span><span class="p">,</span>
+    <span class="n">SocketError</span><span class="p">,</span>
+    <span class="n">CommandFailed</span><span class="p">,</span>
+    <span class="n">TransactionRejected</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">websocket</span> <span class="kn">import</span> <span class="n">create_connection</span>
+<span class="kn">from</span> <span class="nn">websocket._exceptions</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">WebSocketConnectionClosedException</span><span class="p">,</span>
+    <span class="n">WebSocketAddressException</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="n">LOGIN_TIMEOUT</span> <span class="o">=</span> <span class="mi">120</span>
+<span class="n">MAX_TIME_INTERVAL</span> <span class="o">=</span> <span class="mf">0.200</span>
+
+
+<span class="k">def</span> <span class="nf">_get_data</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">parameters</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;command&quot;</span><span class="p">:</span> <span class="n">command</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="n">parameters</span><span class="p">:</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;arguments&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">parameters</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">data</span><span class="p">[</span><span class="s2">&quot;arguments&quot;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+    <span class="k">return</span> <span class="n">data</span>
+
+
+<span class="c1"># The XTBClient class is a client for interacting with the XTB trading</span>
+<span class="c1"># platform, keeping track of</span>
+<span class="c1"># login data, request time intervals, status, WebSocket connection, and trades.</span>
+<div class="viewcode-block" id="XTBClient"><a class="viewcode-back" href="../../source/XTBClient.html#XTBClient.api.XTBClient">[docs]</a><span class="k">class</span> <span class="nc">XTBClient</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_login_data</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_time_last_request</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">MAX_TIME_INTERVAL</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">STATUS</span><span class="o">.</span><span class="n">NOT_LOGGED</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ws</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trades</span> <span class="o">=</span> <span class="p">{}</span>
+
+<div class="viewcode-block" id="XTBClient.login"><a class="viewcode-back" href="../../source/XTBClient.html#XTBClient.api.XTBClient.login">[docs]</a>    <span class="k">def</span> <span class="nf">login</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;demo&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The `login` function establishes a WebSocket connection to a server</span>
+<span class="sd">        and sends a login command with the provided user ID and password.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        user_id : int</span>
+<span class="sd">            The user_id parameter is an integer that represents the user&#39;s</span>
+<span class="sd">            ID or account number.</span>
+<span class="sd">        password : str</span>
+<span class="sd">            The `password` parameter is a string that represents the user&#39;s</span>
+<span class="sd">            password for authentication.</span>
+<span class="sd">        mode : str, optional</span>
+<span class="sd">            The &quot;mode&quot; parameter is used to specify the mode of the connection.</span>
+<span class="sd">            It is set to &quot;demo&quot; by default, which means it connects to a demo</span>
+<span class="sd">            server. However, you can also set it to &quot;real&quot; to connect to a real</span>
+<span class="sd">            server.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">            The login method returns a dictionary.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ws</span> <span class="o">=</span> <span class="n">create_connection</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;wss://ws.xtb.com/</span><span class="si">{</span><span class="n">mode</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">WebSocketAddressException</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">SocketError</span><span class="p">(</span><span class="s2">&quot;Failed to connect to the server&quot;</span><span class="p">)</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send_command</span><span class="p">(</span>
+            <span class="s2">&quot;login&quot;</span><span class="p">,</span> <span class="n">userId</span><span class="o">=</span><span class="n">user_id</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="n">password</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_login_data</span> <span class="o">=</span> <span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">password</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">STATUS</span><span class="o">.</span><span class="n">LOGGED</span>
+        <span class="k">return</span> <span class="n">response</span></div>
+
+<div class="viewcode-block" id="XTBClient.logout"><a class="viewcode-back" href="../../source/XTBClient.html#XTBClient.api.XTBClient.logout">[docs]</a>    <span class="k">def</span> <span class="nf">logout</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The `logout` function sends a command to log out and updates the</span>
+<span class="sd">        status to &quot;logged&quot;.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">            The response from the `_send_command` method is being returned.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send_command</span><span class="p">(</span><span class="s2">&quot;logout&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">STATUS</span><span class="o">.</span><span class="n">LOGGED</span>
+        <span class="k">return</span> <span class="n">response</span></div>
+
+    <span class="k">def</span> <span class="nf">_login_decorator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">STATUS</span><span class="o">.</span><span class="n">NOT_LOGGED</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">NotLogged</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">SocketError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">login</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_login_data</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_login_data</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">login</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_login_data</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_login_data</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_send_command</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">command</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="n">dict_data</span> <span class="o">=</span> <span class="n">_get_data</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="n">time_interval</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_time_last_request</span>
+        <span class="k">if</span> <span class="n">time_interval</span> <span class="o">&lt;</span> <span class="n">MAX_TIME_INTERVAL</span><span class="p">:</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">MAX_TIME_INTERVAL</span> <span class="o">-</span> <span class="n">time_interval</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ws</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">dict_data</span><span class="p">))</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ws</span><span class="o">.</span><span class="n">recv</span><span class="p">()</span>
+        <span class="k">except</span> <span class="n">WebSocketConnectionClosedException</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">SocketError</span><span class="p">(</span><span class="s2">&quot;Connection closed&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">WebSocketAddressException</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">SocketError</span><span class="p">(</span><span class="s2">&quot;Failed to connect to the server&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">SocketError</span><span class="p">(</span><span class="s2">&quot;Not connected to the server&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_time_last_request</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">res</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">CommandFailed</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;returnData&quot;</span> <span class="ow">in</span> <span class="n">res</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">res</span><span class="p">[</span><span class="s2">&quot;returnData&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">command</span> <span class="o">==</span> <span class="s2">&quot;login&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">res</span><span class="p">[</span><span class="s2">&quot;streamSessionId&quot;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="XTBClient.send_command"><a class="viewcode-back" href="../../source/XTBClient.html#XTBClient.api.XTBClient.send_command">[docs]</a>    <span class="k">def</span> <span class="nf">send_command</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">command</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The `send_command` function is a method that sends a</span>
+<span class="sd">        command and its arguments to a remote server, after logging in.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        command : str</span>
+<span class="sd">            The `command` parameter is a string that represents the</span>
+<span class="sd">            command to be sent.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">            The send_command method is returning a dictionary.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_login_decorator</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_send_command</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_transaction</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">mode</span><span class="p">:</span> <span class="n">MODES</span><span class="p">,</span>
+        <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">trans_type</span><span class="p">:</span> <span class="n">TRANSACTION_TYPE</span><span class="p">,</span>
+        <span class="n">volume</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="n">symbol_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_symbol</span><span class="p">(</span><span class="n">symbol</span><span class="p">)</span>
+        <span class="n">price</span> <span class="o">=</span> <span class="n">symbol_info</span><span class="p">[</span><span class="s2">&quot;ask&quot;</span> <span class="k">if</span> <span class="n">mode</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;bid&quot;</span><span class="p">]</span>
+
+        <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;price&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">price</span>
+
+        <span class="k">if</span> <span class="s2">&quot;sl&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;sl&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;price&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;sl&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mf">0.0001</span> <span class="o">*</span> <span class="p">(</span>
+                <span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="n">mode</span><span class="o">.</span><span class="n">value</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="s2">&quot;tp&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;tp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;price&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;tp&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mf">0.0001</span> <span class="o">*</span> <span class="p">(</span>
+                <span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="n">mode</span><span class="o">.</span><span class="n">value</span>
+            <span class="p">)</span>
+        <span class="c1"># check kwargs</span>
+        <span class="n">accepted_values</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;order&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;price&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;expiration&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;customComment&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;offset&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;sl&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;tp&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+        <span class="k">assert</span> <span class="nb">all</span><span class="p">([</span><span class="n">val</span> <span class="ow">in</span> <span class="n">accepted_values</span> <span class="k">for</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">()])</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;cmd&quot;</span><span class="p">:</span> <span class="n">mode</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+            <span class="s2">&quot;symbol&quot;</span><span class="p">:</span> <span class="n">symbol</span><span class="p">,</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="n">trans_type</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+            <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="n">volume</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="n">info</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>  <span class="c1"># update with kwargs parameters</span>
+
+        <span class="n">order</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_command</span><span class="p">(</span><span class="s2">&quot;tradeTransaction&quot;</span><span class="p">,</span> <span class="n">tradeTransInfo</span><span class="o">=</span><span class="n">info</span><span class="p">)</span>
+
+        <span class="n">status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transaction_status</span><span class="p">(</span><span class="n">order</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;order&quot;</span><span class="p">))</span>
+
+        <span class="n">status</span><span class="p">[</span><span class="s2">&quot;request_status&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TRANSACTION_STATUS</span><span class="p">(</span><span class="n">status</span><span class="p">[</span><span class="s2">&quot;requestStatus&quot;</span><span class="p">])</span>
+
+        <span class="k">del</span> <span class="n">status</span><span class="p">[</span><span class="s2">&quot;requestStatus&quot;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">status</span><span class="p">[</span><span class="s2">&quot;request_status&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">TRANSACTION_STATUS</span><span class="o">.</span><span class="n">REJECTED</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">TransactionRejected</span><span class="p">(</span><span class="n">status</span><span class="p">[</span><span class="s2">&quot;message&quot;</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">status</span>
+
+<div class="viewcode-block" id="XTBClient.check_if_market_open"><a class="viewcode-back" href="../../source/XTBClient.html#XTBClient.api.XTBClient.check_if_market_open">[docs]</a>    <span class="k">def</span> <span class="nf">check_if_market_open</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_of_symbols</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The function `check_if_market_open` checks if the market</span>
+<span class="sd">        is open for a given list of symbols based on their trading hours.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        list_of_symbols : list</span>
+<span class="sd">            A list of symbols representing different markets or stocks.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">            a dictionary with market statuses.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">_td</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">today</span><span class="p">()</span>
+        <span class="n">actual_tmsp</span> <span class="o">=</span> <span class="n">_td</span><span class="o">.</span><span class="n">hour</span> <span class="o">*</span> <span class="mi">3600</span> <span class="o">+</span> <span class="n">_td</span><span class="o">.</span><span class="n">minute</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">+</span> <span class="n">_td</span><span class="o">.</span><span class="n">second</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_trading_hours</span><span class="p">(</span><span class="n">list_of_symbols</span><span class="p">)</span>
+        <span class="n">market_values</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">symbol</span> <span class="ow">in</span> <span class="n">response</span><span class="p">:</span>
+            <span class="n">today_values</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">day</span>
+                <span class="k">for</span> <span class="n">day</span> <span class="ow">in</span> <span class="n">symbol</span><span class="p">[</span><span class="s2">&quot;trading&quot;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">day</span><span class="p">[</span><span class="s2">&quot;day&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">_td</span><span class="o">.</span><span class="n">isoweekday</span><span class="p">()</span>
+            <span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">today_values</span><span class="p">[</span><span class="s2">&quot;fromT&quot;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">actual_tmsp</span> <span class="o">&lt;=</span> <span class="n">today_values</span><span class="p">[</span><span class="s2">&quot;toT&quot;</span><span class="p">]:</span>
+                <span class="n">market_values</span><span class="p">[</span><span class="n">symbol</span><span class="p">[</span><span class="s2">&quot;symbol&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">market_values</span><span class="p">[</span><span class="n">symbol</span><span class="p">[</span><span class="s2">&quot;symbol&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="n">market_values</span></div>
+
+<div class="viewcode-block" id="XTBClient.get_candles_in_range"><a class="viewcode-back" href="../../source/XTBClient.html#XTBClient.api.XTBClient.get_candles_in_range">[docs]</a>    <span class="k">def</span> <span class="nf">get_candles_in_range</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">period</span><span class="p">:</span> <span class="n">PERIOD</span><span class="p">,</span>
+        <span class="n">start</span><span class="p">:</span> <span class="n">datetime</span><span class="p">,</span>
+        <span class="n">end</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">today</span><span class="p">(),</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The `get_candles_in_range` function retrieves candlestick data for</span>
+<span class="sd">        a specified symbol and time range, and returns it as a pandas</span>
+<span class="sd">        DataFrame.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        symbol : str</span>
+<span class="sd">            The symbol parameter represents the trading symbol or instrument</span>
+<span class="sd">            for which you want to retrieve the candlestick data. It could be</span>
+<span class="sd">            a stock ticker symbol, cryptocurrency symbol, or any other symbol</span>
+<span class="sd">            used in the trading platform you are working with.</span>
+<span class="sd">        period : PERIOD</span>
+<span class="sd">            The `period` parameter represents the time period for which you</span>
+<span class="sd">            want to retrieve the candlestick data. It is of type `PERIOD`,</span>
+<span class="sd">            which is likely an enumeration or a custom class that defines</span>
+<span class="sd">            different time periods such as 1 minute, 5 minutes, 1 hour, etc.</span>
+<span class="sd">        start : datetime</span>
+<span class="sd">            The `start` parameter is the starting datetime for the range of</span>
+<span class="sd">            candles you want to retrieve. It specifies the beginning of the</span>
+<span class="sd">            time period for which you want to fetch the candle data.</span>
+<span class="sd">        end</span>
+<span class="sd">            The `end` parameter is an optional parameter that specifies the</span>
+<span class="sd">            end date and time for the range of candles to retrieve. If no</span>
+<span class="sd">            value is provided, it defaults to the current date and time</span>
+<span class="sd">            (`datetime.today()`).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">            The function `get_candles_in_range` returns a pandas DataFrame</span>
+<span class="sd">            containing candlestick data for a specified symbol, period,</span>
+<span class="sd">            start, and end time.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_command</span><span class="p">(</span>
+            <span class="s2">&quot;getChartRangeRequest&quot;</span><span class="p">,</span>
+            <span class="n">info</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;period&quot;</span><span class="p">:</span> <span class="n">period</span><span class="p">,</span>
+                <span class="s2">&quot;start&quot;</span><span class="p">:</span> <span class="n">start</span><span class="o">.</span><span class="n">timestamp</span><span class="p">()</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">,</span>
+                <span class="s2">&quot;end&quot;</span><span class="p">:</span> <span class="n">end</span><span class="o">.</span><span class="n">timestamp</span><span class="p">()</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">,</span>
+                <span class="s2">&quot;symbol&quot;</span><span class="p">:</span> <span class="n">symbol</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">)</span>
+
+        <span class="n">candle_history</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">candle</span> <span class="ow">in</span> <span class="n">res</span><span class="p">[</span><span class="s2">&quot;rateInfos&quot;</span><span class="p">]:</span>
+            <span class="n">_pr</span> <span class="o">=</span> <span class="n">candle</span><span class="p">[</span><span class="s2">&quot;open&quot;</span><span class="p">]</span>
+            <span class="n">op_pr</span> <span class="o">=</span> <span class="n">_pr</span> <span class="o">/</span> <span class="mi">10</span> <span class="o">**</span> <span class="n">res</span><span class="p">[</span><span class="s2">&quot;digits&quot;</span><span class="p">]</span>
+            <span class="n">cl_pr</span> <span class="o">=</span> <span class="p">(</span><span class="n">_pr</span> <span class="o">+</span> <span class="n">candle</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">])</span> <span class="o">/</span> <span class="mi">10</span> <span class="o">**</span> <span class="n">res</span><span class="p">[</span><span class="s2">&quot;digits&quot;</span><span class="p">]</span>
+            <span class="n">hg_pr</span> <span class="o">=</span> <span class="p">(</span><span class="n">_pr</span> <span class="o">+</span> <span class="n">candle</span><span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">])</span> <span class="o">/</span> <span class="mi">10</span> <span class="o">**</span> <span class="n">res</span><span class="p">[</span><span class="s2">&quot;digits&quot;</span><span class="p">]</span>
+            <span class="n">lw_pr</span> <span class="o">=</span> <span class="p">(</span><span class="n">_pr</span> <span class="o">+</span> <span class="n">candle</span><span class="p">[</span><span class="s2">&quot;low&quot;</span><span class="p">])</span> <span class="o">/</span> <span class="mi">10</span> <span class="o">**</span> <span class="n">res</span><span class="p">[</span><span class="s2">&quot;digits&quot;</span><span class="p">]</span>
+            <span class="n">new_candle_entry</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">candle</span><span class="p">[</span><span class="s2">&quot;ctm&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">,</span>
+                <span class="s2">&quot;open&quot;</span><span class="p">:</span> <span class="n">op_pr</span><span class="p">,</span>
+                <span class="s2">&quot;close&quot;</span><span class="p">:</span> <span class="n">cl_pr</span><span class="p">,</span>
+                <span class="s2">&quot;high&quot;</span><span class="p">:</span> <span class="n">hg_pr</span><span class="p">,</span>
+                <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="n">lw_pr</span><span class="p">,</span>
+                <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="n">candle</span><span class="p">[</span><span class="s2">&quot;vol&quot;</span><span class="p">],</span>
+            <span class="p">}</span>
+            <span class="n">candle_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_candle_entry</span><span class="p">)</span>
+
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">candle_history</span><span class="p">)</span>
+        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">],</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;s&quot;</span><span class="p">)</span>
+
+        <span class="n">df</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;timestamp&quot;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">df</span></div>
+
+<div class="viewcode-block" id="XTBClient.get_all_symbols"><a class="viewcode-back" href="../../source/XTBClient.html#XTBClient.api.XTBClient.get_all_symbols">[docs]</a>    <span class="k">def</span> <span class="nf">get_all_symbols</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The function `get_all_symbols` sends a command to retrieve</span>
+<span class="sd">        all symbols and returns them as a list.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">            a list of symbols with their characteristics.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_command</span><span class="p">(</span><span class="s2">&quot;getAllSymbols&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="XTBClient.get_symbol"><a class="viewcode-back" href="../../source/XTBClient.html#XTBClient.api.XTBClient.get_symbol">[docs]</a>    <span class="k">def</span> <span class="nf">get_symbol</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The function `get_symbol` takes a symbol as input and sends</span>
+<span class="sd">        a command to retrieve information about that symbol.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        symbol : str</span>
+<span class="sd">            The `symbol` parameter is a string that represents</span>
+<span class="sd">            the symbol you want to retrieve information for.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">            a dictionary with information about the symbol.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_command</span><span class="p">(</span><span class="s2">&quot;getSymbol&quot;</span><span class="p">,</span> <span class="n">symbol</span><span class="o">=</span><span class="n">symbol</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="XTBClient.open_transaction"><a class="viewcode-back" href="../../source/XTBClient.html#XTBClient.api.XTBClient.open_transaction">[docs]</a>    <span class="k">def</span> <span class="nf">open_transaction</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="n">MODES</span><span class="p">,</span> <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">volume</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The function &quot;open_transaction&quot; is used to open a transaction</span>
+<span class="sd">        with a specified mode, symbol, volume, and additional keyword</span>
+<span class="sd">        arguments.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        mode : MODES</span>
+<span class="sd">            The &quot;mode&quot; parameter is of type MODES. It is used to specify</span>
+<span class="sd">            the mode of the transaction, such as &quot;buy&quot; or &quot;sell&quot;.</span>
+<span class="sd">        symbol : str</span>
+<span class="sd">            The &quot;symbol&quot; parameter is a string that represents the symbol</span>
+<span class="sd">            or identifier of the transaction. It is typically used to identify</span>
+<span class="sd">            a specific asset or security in a financial market.</span>
+<span class="sd">        volume : float</span>
+<span class="sd">            The volume parameter represents the quantity or amount of the</span>
+<span class="sd">            symbol being traded in the</span>
+<span class="sd">        transaction. It is a float value.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">            A dictionary with status of the operation.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transaction</span><span class="p">(</span>
+            <span class="n">mode</span><span class="p">,</span> <span class="n">symbol</span><span class="p">,</span> <span class="n">TRANSACTION_TYPE</span><span class="o">.</span><span class="n">OPEN</span><span class="p">,</span> <span class="n">volume</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="XTBClient.close_all"><a class="viewcode-back" href="../../source/XTBClient.html#XTBClient.api.XTBClient.close_all">[docs]</a>    <span class="k">def</span> <span class="nf">close_all</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The `close_all` function closes all transactions and returns a dictionary with the request status</span>
+<span class="sd">        and a message indicating the success of the operation.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">            a dictionary with two key-value pairs. The first key is &quot;request_status&quot; and the value is the</span>
+<span class="sd">        constant TRANSACTION_STATUS.ACCEPTED. The second key is &quot;message&quot; and the value is the string &quot;All</span>
+<span class="sd">        transactions closed successfully.&quot;</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_trades</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">trade</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trades</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
+            <span class="n">retval</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">close_transaction</span><span class="p">(</span><span class="n">trade</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">retval</span><span class="p">[</span><span class="s2">&quot;request_status&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">TRANSACTION_STATUS</span><span class="o">.</span><span class="n">ERROR</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">retval</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_trades</span><span class="p">()</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">request_status</span><span class="o">=</span><span class="n">TRANSACTION_STATUS</span><span class="o">.</span><span class="n">ACCEPTED</span><span class="p">,</span>
+            <span class="n">message</span><span class="o">=</span><span class="s2">&quot;All transactions closed successfully.&quot;</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="XTBClient.transaction_status"><a class="viewcode-back" href="../../source/XTBClient.html#XTBClient.api.XTBClient.transaction_status">[docs]</a>    <span class="k">def</span> <span class="nf">transaction_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">order_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The function `transaction_status` sends a command to check the</span>
+<span class="sd">        status of a trade transaction with a given order ID.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        order_id : int</span>
+<span class="sd">            The `order_id` parameter is an integer that represents the unique</span>
+<span class="sd">            identifier of a trade transaction.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">            Dictionary with transaction status.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_command</span><span class="p">(</span><span class="s2">&quot;tradeTransactionStatus&quot;</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">order_id</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="XTBClient.get_trades"><a class="viewcode-back" href="../../source/XTBClient.html#XTBClient.api.XTBClient.get_trades">[docs]</a>    <span class="k">def</span> <span class="nf">get_trades</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The function `get_trades` returns a list of `TRANSACTION` objects</span>
+<span class="sd">        by sending a command to retrieve trades that are currently open.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">            The code is returning a list of TRANSACTION objects.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="n">TRANSACTION</span><span class="p">(</span><span class="o">**</span><span class="n">t</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_command</span><span class="p">(</span><span class="s2">&quot;getTrades&quot;</span><span class="p">,</span> <span class="n">openedOnly</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="p">]</span></div>
+
+<div class="viewcode-block" id="XTBClient.update_trades"><a class="viewcode-back" href="../../source/XTBClient.html#XTBClient.api.XTBClient.update_trades">[docs]</a>    <span class="k">def</span> <span class="nf">update_trades</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The function updates the &quot;trades&quot; attribute of an object with</span>
+<span class="sd">        a dictionary of trades.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trades</span> <span class="o">=</span> <span class="p">{</span><span class="nb">str</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">order</span><span class="p">):</span> <span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_trades</span><span class="p">()}</span></div>
+
+<div class="viewcode-block" id="XTBClient.get_ticks"><a class="viewcode-back" href="../../source/XTBClient.html#XTBClient.api.XTBClient.get_ticks">[docs]</a>    <span class="k">def</span> <span class="nf">get_ticks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">symbols</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The function `get_ticks` sends a command to retrieve tick prices</span>
+<span class="sd">        for a list of symbols, with a specified level and timestamp.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        symbols : list</span>
+<span class="sd">            The `symbols` parameter is a list of symbols for which you</span>
+<span class="sd">            want to retrieve tick prices. Each symbol represents a</span>
+<span class="sd">            financial instrument such as a stock, currency pair, or commodity.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">            A Dictionary with ticks.</span>
+
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_command</span><span class="p">(</span>
+            <span class="s2">&quot;getTickPrices&quot;</span><span class="p">,</span>
+            <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">symbols</span><span class="o">=</span><span class="n">symbols</span><span class="p">,</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">timestamp</span><span class="p">(),</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="XTBClient.get_profits"><a class="viewcode-back" href="../../source/XTBClient.html#XTBClient.api.XTBClient.get_profits">[docs]</a>    <span class="k">def</span> <span class="nf">get_profits</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The function `get_profits` calculates the total</span>
+<span class="sd">        profit from a list of trades.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">            the sum of profits from all trades.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_trades</span><span class="p">()</span>
+        <span class="n">suma</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">trade</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trades</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
+            <span class="n">suma</span> <span class="o">+=</span> <span class="n">trade</span><span class="o">.</span><span class="n">profit</span>
+        <span class="k">return</span> <span class="n">suma</span></div></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">XTB-Trader</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, Krystian Pielat.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
